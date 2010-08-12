@@ -1,56 +1,73 @@
-use MooseX::Declare;
+package Leyland;
 
-class Leyland {
-	use Leyland::Context;
-	use Plack::Response;
-	use Data::Dumper;
+use Moose;
+use namespace::autoclean;
+use Plack::Response;
+use Leyland::Context;
 
-	has 'routes' => (is => 'ro', isa => 'HashRef', predicate => 'has_routes', writer => '_set_routes');
+has 'routes' => (is => 'ro', isa => 'HashRef', predicate => 'has_routes', writer => '_set_routes');
 	
-	method BUILD {
-		# get all routes
-		my $routes = {};
+sub BUILD {
+	my $self = shift;
 
-		foreach ($self->controllers) {
-			$routes->{$_->prefix} = $_->routes;
-		}
+	# get all routes
+	my $routes = {};
 
-		$self->_set_routes($routes);
+	foreach ($self->controllers) {
+		$routes->{$_->prefix} = $_->routes;
 	}
 
-	method handle (HashRef $env) {
-		# create the context object
-		my $c = Leyland::Context->new(env => $env);
+	$self->_set_routes($routes);
+}
 
-		# find the first matching route
-		my $route = $self->find_route($c);
+sub handle {
+	my ($self, $env) = @_;
 
-		# invoke it
-		my $res = Plack::Response->new(200);
-		$res->content_type('text/html');
-		$res->body($route->{code}->($c));
+	# create the context object
+	my $c = Leyland::Context->new(env => $env);
 
-		return $res->finalize;
-	}
+	# find the first matching route
+	my $route = $self->find_route($c)
+		|| return $self->not_found($c);
 
-	method find_route (Leyland::Context $c) {
-		my $path = $c->req->path;
-		# add a trailing slash to the path unless there is one
-		$path .= '/' unless $path =~ m!/$!;
+	# invoke it
+	my $res = Plack::Response->new(200);
+	$res->content_type('text/html');
+	$res->body($route->{code}->($c));
 
-		my ($prefix) = ($path =~ m!^/([^/]*)?!);
-		$prefix = 'root' unless $prefix;
+	return $res->finalize;
+}
 
-		my $route = $' || '/';
+sub find_route {
+	my ($self, $c) = @_;
 
-		# do we have an exact route?
-		my $code = $self->routes->{$prefix}->{$route}->{lc($c->req->method)};
+	my $path = $c->req->path;
+	# add a trailing slash to the path unless there is one
+	$path .= '/' unless $path =~ m!/$!;
 
-		# do we have an exact 'any' route?
-		$code ||= $self->routes->{$prefix}->{$route}->{any};
+	my ($prefix) = ($path =~ m!^/([^/]*)!);
+	$prefix = 'root' unless $prefix;
 
-		return { prefix => $prefix, method => $c->req->method, code => $code };
-	}
+	my $route = $' || '/';
+
+	# do we have an exact route?
+	my $code = $self->routes->{$prefix}->{$route}->{lc($c->req->method)}
+		|| return;
+
+	# do we have an exact 'any' route?
+	$code ||= $self->routes->{$prefix}->{$route}->{any};
+
+	return { prefix => $prefix, method => $c->req->method, code => $code };
+}
+
+sub not_found {
+	my ($self, $c) = @_;
+
+	my $res = Plack::Response->new(404);
+	$res->content_type('text/html');
+	$res->body("404 Not Found");
+
+	return $res->finalize;
 }
 
 =head1 NAME
@@ -116,4 +133,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-1;
+__PACKAGE__->meta->make_immutable;
