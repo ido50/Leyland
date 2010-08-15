@@ -1,26 +1,26 @@
 package Leyland::Controller;
 
 use Moose::Role;
+use MooseX::ClassAttribute;
 use namespace::autoclean;
 
-has 'prefix' => (is => 'ro', isa => 'Str', default => 'root', writer => 'set_prefix');
-has 'routes' => (is => 'ro', isa => 'HashRef', predicate => 'has_routes', writer => '_set_routes');
+class_has 'prefix' => (is => 'rw', isa => 'Str', default => '');
+class_has 'routes' => (is => 'ro', isa => 'HashRef', predicate => 'has_routes', writer => '_set_routes');
 
-requires 'gen_routes';
+sub add_route {
+	my ($class, $methods, $regex, $code) = @_;
 
-sub BUILD {
-	my $self = shift;
+	my $meth = join('|', @$methods);
 
-	# create routes for this controller
-	$self->gen_routes;
+	my $routes = $class->routes;
+	$routes->{$regex}->{$meth} = $code;
+	$class->_set_routes($routes);
 }
 
-sub add {
-	my ($self, $method, $route, $code) = @_;
+sub set_prefix {
+	my ($class, $code) = @_;
 
-	my $routes = $self->routes;
-	$routes->{$route}->{$method} = $code;
-	$self->_set_routes($routes);
+	$class->prefix($code->());
 }
 
 1;

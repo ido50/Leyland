@@ -2,21 +2,62 @@ package Leyland;
 
 use Moose;
 use namespace::autoclean;
-use Plack::Response;
 use Leyland::Context;
+use JSON::Any;
+use File::Util;
+use Carp;
+use Data::Dumper;
+
+has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
+
+has 'log' => (is => 'ro', isa => 'Log::Handler', builder => '_init_log');
+
+has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
 
 has 'routes' => (is => 'ro', isa => 'HashRef', predicate => 'has_routes', writer => '_set_routes');
+
+has 'futil' => (is => 'ro', isa => 'File::Util', default => sub { File::Util->new });
+
+has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
+
+sub _init_log {
+	my $log = Log::Handler->new();
+	$log->add(file => { filename => 'output.log', minlevel => 'notice', maxlevel => 'debug' });
+	$log->add(screen => { log_to => 'STDOUT', minlevel => 'notice', maxlevel => 'debug' });
+	return $log;
+}
+
+sub _init_config {
+	my $self = shift;
+
+	my $config;
+
+	if (-e 'config.json' && $self->futil->can_read('config.json')) {
+		# we have a config file, let's load it
+		my $json = $self->futil->load_file('config.json');
+		$config = $self->json->from_json($json);
+	} else {
+		if (-e 'config.json') {
+			# we couldn't read the config file (permission problem?)
+			carp "Leyland can't read the config.json file, please check the file's permissions.";
+		}
+			
+		# let's create a default config
+		$config = $self->_default_config;
+	}
+
+	return $config;
+}
 	
 sub BUILD {
 	my $self = shift;
 
 	# get all routes
 	my $routes = {};
-
 	foreach ($self->controllers) {
-		$routes->{$_->prefix} = $_->routes;
+		my $prefix = $_->prefix || '_root_';
+		$routes->{$prefix} = $_->routes;
 	}
-
 	$self->_set_routes($routes);
 }
 
@@ -24,50 +65,130 @@ sub handle {
 	my ($self, $env) = @_;
 
 	# create the context object
-	my $c = Leyland::Context->new(env => $env);
+	my %params = ( env => $env, log => $self->log, config => $self->config );
+	$params{views} = $self->views if $self->has_views;
+	my $c = Leyland::Context->new(%params);
 
-	# find the first matching route
-	my $route = $self->find_route($c)
-		|| return $self->not_found($c);
+	# does the request path have an "unnecessary" trailing slash?
+	# if so, remove it and redirect to the new path
+	if ($c->req->path ne '/' && $c->req->path =~ m!/$!) {
+		my $newpath = $`;
+		$c->res->content_type('text/html');
+		my $uri = $c->req->uri;
+		$uri->path($newpath);
+		
+		$c->res->redirect($uri, 301);
+		return $c->res->finalize;
+	}
 
-	# invoke it
-	my $res = Plack::Response->new(200);
-	$res->content_type('text/html');
-	$res->body($route->{code}->($c));
+	# print some useful debug messages
+	$c->log->info('['.uc($c->req->method).']', $c->req->address, $c->req->path);
 
-	return $res->finalize;
+	# find matching routes
+	$self->find_routes($c);
+
+	$c->log->notice("Finished looking for routes");
+	
+	# have we found any routes
+	if ($c->has_routes) {
+		$c->res->content_type('text/html');
+
+		my $i = 0;
+		my $ret = $c->routes->[$i]->{code}->($c);
+		while ($c->pass_next && $i < 100) { # $i is also used to prevent infinite loops
+			# we need to pass to the next matching route
+			# first, let's erase the pass flag from the context
+			# so we don't try to do this infinitely
+			$c->_pass(0);
+			
+			# invoke the subroutine of the new route
+			$ret = $c->routes->[++$i]->{code}->($c);
+		}
+		$c->res->body($ret);
+
+		return $c->res->finalize;
+	} else {
+		return $self->not_found($c);
+	}
 }
 
-sub find_route {
+sub find_routes {
 	my ($self, $c) = @_;
+
+	$c->log->notice("Starting to look for routes");
 
 	my $path = $c->req->path;
 	# add a trailing slash to the path unless there is one
-	$path .= '/' unless $path =~ m!/$!;
+	#$path .= '/' unless $path =~ m!/$!;
 
-	my ($prefix) = ($path =~ m!^/([^/]*)!);
-	$prefix = 'root' unless $prefix;
-
+	# let's find all possible prefix/route combinations
+	# from the path
+	my @pref_routes = ({ prefix => '', route => $path });
+	my ($prefix) = ($path =~ m!^(/[^/]+)!);
 	my $route = $' || '/';
+	my $i = 0; # counter to prevent infinite loops, probably should removed
+	while ($prefix && $i < 100) {
+		$c->log->notice("Adding prefix $prefix, route $route");
+		push(@pref_routes, { prefix => $prefix, route => $route });
+		
+		my ($suffix) = ($route =~ m!^(/[^/]+)!);
+		last unless $suffix;
+		$prefix .= $suffix;
+		$route = $' || '/';
+		$i++;
+	}
 
-	# do we have an exact route?
-	my $code = $self->routes->{$prefix}->{$route}->{lc($c->req->method)}
-		|| return;
+	my $routes;
+	foreach (@pref_routes) {		
+		my $pref_name = $_->{prefix} || '_root_';
 
-	# do we have an exact 'any' route?
-	$code ||= $self->routes->{$prefix}->{$route}->{any};
+		next unless exists $self->routes->{$pref_name};
 
-	return { prefix => $prefix, method => $c->req->method, code => $code };
+		$c->log->notice("Looking for routes in $pref_name");
+		
+		# find matching routes in this prefix
+		foreach my $r (keys %{$self->routes->{$pref_name}}) {
+			# does the requested route match the current route?
+			next unless $_->{route} =~ m/$r/;
+			
+			# it does, but is there a subroutine for the request method?
+			if (my $code = $self->routes->{$pref_name}->{$r}->{lc($c->req->method)}) {
+				# great, push it to the matched routes array
+				push(@$routes, { prefix => $_->{prefix}, route => $r, code => $code });
+			}
+			# is there a subroutine for all request methods?
+			if (my $code = $self->routes->{$pref_name}->{$r}->{any}) {
+				push(@$routes, { prefix => $_->{prefix}, route => $r, code => $code });
+			}
+		}
+	}
+
+	# save matching routes in the context object
+	$c->_set_routes($routes) if defined $routes && scalar @$routes;
 }
 
 sub not_found {
 	my ($self, $c) = @_;
 
-	my $res = Plack::Response->new(404);
-	$res->content_type('text/html');
-	$res->body("404 Not Found");
+	$c->res->content_type('text/html');
+	$c->res->body('404 Not Found');
 
-	return $res->finalize;
+	return $c->res->finalize;
+}
+
+sub _default_config {
+	{
+		environments => {
+			development => {
+				minlevel => "notice",
+				maxlevel => "debug",
+			},
+			production => {
+				minlevel => "warning",
+				maxlevel => "debug",
+			}
+		}
+	}
 }
 
 =head1 NAME
