@@ -5,8 +5,11 @@ use namespace::autoclean;
 use Leyland::Context;
 use JSON::Any;
 use File::Util;
+use Log::Handler;
 use Carp;
 use Data::Dumper;
+use Module::Load;
+use Tie::IxHash;
 
 has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
 
@@ -14,7 +17,7 @@ has 'log' => (is => 'ro', isa => 'Log::Handler', builder => '_init_log');
 
 has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
 
-has 'routes' => (is => 'ro', isa => 'HashRef', predicate => 'has_routes', writer => '_set_routes');
+has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
 
 has 'futil' => (is => 'ro', isa => 'File::Util', default => sub { File::Util->new });
 
@@ -52,11 +55,29 @@ sub _init_config {
 sub BUILD {
 	my $self = shift;
 
+	# init views, if any, start with view modules in the app
+	my @views = $self->_views || ();
+	# now load views defined in the config file
+	VIEW: foreach (@{$self->config->{views}}) {
+		$self->log->info("Looking at view $_");
+
+		# have we already loaded this view in the first step?
+		foreach my $v ($self->_views) {
+			next VIEW if $v eq $_;
+		}
+
+		# attempt to load this view
+		my $class = "Leyland::View::$_";
+		load $class;
+		push(@views, $class->new());
+	}
+	$self->_set_views(\@views) if scalar @views;
+
 	# get all routes
-	my $routes = {};
+	my $routes = Tie::IxHash->new;
 	foreach ($self->controllers) {
 		my $prefix = $_->prefix || '_root_';
-		$routes->{$prefix} = $_->routes;
+		$routes->Push($prefix => $_->routes);
 	}
 	$self->_set_routes($routes);
 }
@@ -104,6 +125,13 @@ sub handle {
 			# invoke the subroutine of the new route
 			$ret = $c->routes->[++$i]->{code}->($c);
 		}
+		
+		# what kind of response did I get?
+		if (ref $ret) {
+			# we need to deserialize this
+			$ret = $self->json->to_json($ret);
+		}
+		
 		$c->res->body($ret);
 
 		return $c->res->finalize;
@@ -142,23 +170,27 @@ sub find_routes {
 	foreach (@pref_routes) {		
 		my $pref_name = $_->{prefix} || '_root_';
 
-		next unless exists $self->routes->{$pref_name};
+		next unless $self->routes->EXISTS($pref_name);
 
 		$c->log->notice("Looking for routes in $pref_name");
+
+		my $pref_routes = $self->routes->FETCH($pref_name);
 		
 		# find matching routes in this prefix
-		foreach my $r (keys %{$self->routes->{$pref_name}}) {
+		foreach my $r ($pref_routes->Keys) {
 			# does the requested route match the current route?
 			next unless $_->{route} =~ m/$r/;
-			
-			# it does, but is there a subroutine for the request method?
-			if (my $code = $self->routes->{$pref_name}->{$r}->{lc($c->req->method)}) {
-				# great, push it to the matched routes array
-				push(@$routes, { prefix => $_->{prefix}, route => $r, code => $code });
-			}
-			# is there a subroutine for all request methods?
-			if (my $code = $self->routes->{$pref_name}->{$r}->{any}) {
-				push(@$routes, { prefix => $_->{prefix}, route => $r, code => $code });
+
+			my $route_meths = $pref_routes->FETCH($r);
+
+			# find all routes that support the request method (i.e. GET, POST, etc.)
+			foreach my $ms (sort { $a =~ m/\|/ <=> $b =~ m/\|/ || $a eq 'any' || $b eq 'any' } keys %$route_meths) {
+				# it does, but is there a subroutine for the exact request method?
+				foreach my $m (split(/\|/, $ms)) {
+					next unless $m eq lc($c->req->method) || $m eq 'any';
+
+					push(@$routes, { prefix => $_->{prefix}, route => $r, code => $route_meths->{$m} });
+				}
 			}
 		}
 	}
@@ -180,14 +212,15 @@ sub _default_config {
 	{
 		environments => {
 			development => {
-				minlevel => "notice",
-				maxlevel => "debug",
+				minlevel => 'notice',
+				maxlevel => 'debug',
 			},
 			production => {
-				minlevel => "warning",
-				maxlevel => "debug",
+				minlevel => 'warning',
+				maxlevel => 'debug',
 			}
-		}
+		},
+		views => ['Tenjin'],
 	}
 }
 

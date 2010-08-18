@@ -4,7 +4,6 @@ use Moose;
 use namespace::autoclean;
 use Plack::Request;
 use Plack::Response;
-use Log::Handler;
 use Carp;
 
 has 'env' => (is => 'ro', isa => 'HashRef', required => 1);
@@ -53,6 +52,16 @@ sub view {
 	}
 
 	croak "Can't find a view named $name.";
+}
+
+sub template {
+	my ($self, $tmpl_name, $context) = @_;
+
+	$context->{c} = $self;
+
+	return unless scalar @{$self->views};
+
+	$self->views->[0]->render($tmpl_name, $context);
 }
 
 __PACKAGE__->meta->make_immutable;
