@@ -3,9 +3,10 @@ package Leyland;
 use Moose;
 use namespace::autoclean;
 use Leyland::Context;
+use Leyland::Negotiator;
 use JSON::Any;
+use XML::TreePP;
 use File::Util;
-use Log::Handler;
 use Carp;
 use Data::Dumper;
 use Module::Load;
@@ -13,7 +14,7 @@ use Tie::IxHash;
 
 has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
 
-has 'log' => (is => 'ro', isa => 'Log::Handler', builder => '_init_log');
+has 'logger' => (is => 'ro', does => 'Leyland::Logger', writer => '_set_logger');
 
 has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
 
@@ -23,12 +24,9 @@ has 'futil' => (is => 'ro', isa => 'File::Util', default => sub { File::Util->ne
 
 has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
 
-sub _init_log {
-	my $log = Log::Handler->new();
-	$log->add(file => { filename => 'output.log', minlevel => 'notice', maxlevel => 'debug' });
-	$log->add(screen => { log_to => 'STDOUT', minlevel => 'notice', maxlevel => 'debug' });
-	return $log;
-}
+has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; });
+
+has 'conneg' => (is => 'ro', isa => 'Leyland::Negotiator', default => sub { Leyland::Negotiator->new });
 
 sub _init_config {
 	my $self = shift;
@@ -54,11 +52,25 @@ sub _init_config {
 	
 sub BUILD {
 	my $self = shift;
+	
+	my $config = $self->config;
+
+	# init logger, and if none are set, use Log::Handler
+	if (exists $config->{logger} && exists $config->{logger}->{class}) {
+		my $class = 'Leyland::Logger::'.$config->{logger}->{class};
+		load $class;
+		my $logger = $class->init($config);
+		$self->_set_logger($logger);
+	} else {
+		load Leyland::Logger::LogHandler;
+		my $logger = Leyland::Logger::LogHandler->init();
+		$self->_set_logger($logger);
+	}
 
 	# init views, if any, start with view modules in the app
 	my @views = $self->_views || ();
 	# now load views defined in the config file
-	VIEW: foreach (@{$self->config->{views}}) {
+	VIEW: foreach (@{$config->{views}}) {
 		$self->log->info("Looking at view $_");
 
 		# have we already loaded this view in the first step?
@@ -86,9 +98,12 @@ sub handle {
 	my ($self, $env) = @_;
 
 	# create the context object
-	my %params = ( env => $env, log => $self->log, config => $self->config );
+	my %params = ( shutton => $self, env => $env, config => $self->config );
 	$params{views} = $self->views if $self->has_views;
 	my $c = Leyland::Context->new(%params);
+
+	# give the context object a logger
+	$c->_set_log($self->logger->new_request_log($c->req));
 
 	# does the request path have an "unnecessary" trailing slash?
 	# if so, remove it and redirect to the new path
@@ -105,111 +120,64 @@ sub handle {
 	# print some useful debug messages
 	$c->log->info('['.uc($c->req->method).']', $c->req->address, $c->req->path);
 
-	# find matching routes
-	$self->find_routes($c);
+	# find matching routes (will issue an error if none found or none
+	# return client's acceptable media types)
+	my @routes = $self->conneg->find_routes($c, $self->routes);
 
-	$c->log->notice("Finished looking for routes");
+	$c->_set_routes(\@routes);
 	
-	# have we found any routes
-	if ($c->has_routes) {
-		$c->res->content_type('text/html');
+	# invoke the first matching route
+	my $i = 0;
+	my $ret = $self->deserialize($c, $c->routes->[$i]->{route}->{code}->($c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
 
-		my $i = 0;
-		my $ret = $c->routes->[$i]->{code}->($c);
-		while ($c->pass_next && $i < 100) { # $i is also used to prevent infinite loops
-			# we need to pass to the next matching route
-			# first, let's erase the pass flag from the context
-			# so we don't try to do this infinitely
-			$c->_pass(0);
-			
-			# invoke the subroutine of the new route
-			$ret = $c->routes->[++$i]->{code}->($c);
-		}
+	while ($c->pass_next && $i < scalar @{$c->routes} && $i < 100) { # $i is also used to prevent infinite loops
+		# we need to pass to the next matching route
+		# first, let's erase the pass flag from the context
+		# so we don't try to do this infinitely
+		$c->_pass(0);
 		
-		# what kind of response did I get?
-		if (ref $ret) {
-			# we need to deserialize this
-			$ret = $self->json->to_json($ret);
-		}
-		
-		$c->res->body($ret);
-
-		return $c->res->finalize;
-	} else {
-		return $self->not_found($c);
+		# invoke the subroutine of the new route
+		$ret = $self->deserialize($c, $c->routes->[++$i]->{route}->{code}->($c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
 	}
-}
-
-sub find_routes {
-	my ($self, $c) = @_;
-
-	$c->log->notice("Starting to look for routes");
-
-	my $path = $c->req->path;
-	# add a trailing slash to the path unless there is one
-	#$path .= '/' unless $path =~ m!/$!;
-
-	# let's find all possible prefix/route combinations
-	# from the path
-	my @pref_routes = ({ prefix => '', route => $path });
-	my ($prefix) = ($path =~ m!^(/[^/]+)!);
-	my $route = $' || '/';
-	my $i = 0; # counter to prevent infinite loops, probably should removed
-	while ($prefix && $i < 100) {
-		$c->log->notice("Adding prefix $prefix, route $route");
-		push(@pref_routes, { prefix => $prefix, route => $route });
-		
-		my ($suffix) = ($route =~ m!^(/[^/]+)!);
-		last unless $suffix;
-		$prefix .= $suffix;
-		$route = $' || '/';
-		$i++;
-	}
-
-	my $routes;
-	foreach (@pref_routes) {		
-		my $pref_name = $_->{prefix} || '_root_';
-
-		next unless $self->routes->EXISTS($pref_name);
-
-		$c->log->notice("Looking for routes in $pref_name");
-
-		my $pref_routes = $self->routes->FETCH($pref_name);
-		
-		# find matching routes in this prefix
-		foreach my $r ($pref_routes->Keys) {
-			# does the requested route match the current route?
-			next unless $_->{route} =~ m/$r/;
-
-			my $route_meths = $pref_routes->FETCH($r);
-
-			# find all routes that support the request method (i.e. GET, POST, etc.)
-			foreach my $ms (sort { $a =~ m/\|/ <=> $b =~ m/\|/ || $a eq 'any' || $b eq 'any' } keys %$route_meths) {
-				# it does, but is there a subroutine for the exact request method?
-				foreach my $m (split(/\|/, $ms)) {
-					next unless $m eq lc($c->req->method) || $m eq 'any';
-
-					push(@$routes, { prefix => $_->{prefix}, route => $r, code => $route_meths->{$m} });
-				}
-			}
-		}
-	}
-
-	# save matching routes in the context object
-	$c->_set_routes($routes) if defined $routes && scalar @$routes;
-}
-
-sub not_found {
-	my ($self, $c) = @_;
-
-	$c->res->content_type('text/html');
-	$c->res->body('404 Not Found');
+	
+	$c->res->body($ret);
 
 	return $c->res->finalize;
 }
 
+sub log {
+	$_[0]->logger->logger;
+}
+
+sub deserialize {
+	my ($self, $c, $obj, $want) = @_;
+
+	$want .= ';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;
+	$c->res->content_type($want);
+
+	if (ref $obj eq 'ARRAY' && scalar @$obj == 2) {
+		# render specified template
+		return $c->template($obj->[0]->{$want}, $obj->[1]);
+	} elsif (ref $obj eq 'ARRAY' || ref $obj eq 'HASH') {
+		# deserialize according to wanted type
+		if ($want eq 'application/json') {
+			return $self->json->to_json($obj);
+		} elsif ($want eq 'application/atom+xml' || $want eq 'application/xml') {
+			return $self->xml->write($obj);
+		} else {
+			# just use Data::Dumper
+			return Dumper($obj);
+		}			
+	} else { # implied(?): ref $obj eq 'SCALAR'
+		# return as is
+		return $obj;
+	}
+}
+
 sub _default_config {
 	{
+		appname => 'ReqRes',
+		env => 'development',
 		environments => {
 			development => {
 				minlevel => 'notice',
@@ -219,6 +187,9 @@ sub _default_config {
 				minlevel => 'warning',
 				maxlevel => 'debug',
 			}
+		},
+		logger => {
+			class => 'LogShutton',
 		},
 		views => ['Tenjin'],
 	}
