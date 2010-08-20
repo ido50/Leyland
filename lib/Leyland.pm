@@ -117,8 +117,9 @@ sub handle {
 		return $c->res->finalize;
 	}
 
-	# print some useful debug messages
-	$c->log->info('['.uc($c->req->method).']', $c->req->address, $c->req->path);
+	# Leyland only supports UTF-8 character encodings, so let's check
+	# the client supports that. If not, let's return an error
+	$self->conneg->negotiate_charset($c);
 
 	# find matching routes (will issue an error if none found or none
 	# return client's acceptable media types)
@@ -139,7 +140,7 @@ sub handle {
 		# invoke the subroutine of the new route
 		$ret = $self->deserialize($c, $c->routes->[++$i]->{route}->{code}->($c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
 	}
-	
+
 	$c->res->body($ret);
 
 	return $c->res->finalize;
@@ -152,8 +153,8 @@ sub log {
 sub deserialize {
 	my ($self, $c, $obj, $want) = @_;
 
-	$want .= ';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;
-	$c->res->content_type($want);
+	my $ct = $want.';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;
+	$c->res->content_type($ct);
 
 	if (ref $obj eq 'ARRAY' && scalar @$obj == 2) {
 		# render specified template

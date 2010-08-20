@@ -16,7 +16,6 @@ sub find_routes {
 	my $route = $' || '/';
 	my $i = 0; # counter to prevent infinite loops, probably should removed
 	while ($prefix && $i < 100) {
-		$c->log->notice("Adding prefix $prefix, route $route");
 		push(@pref_routes, { prefix => $prefix, route => $route });
 		
 		my ($suffix) = ($route =~ m!^(/[^/]+)!);
@@ -32,9 +31,15 @@ sub find_routes {
 	# have we found anything? if not, return 404 error
 	croak "404 Not Found" unless scalar @routes;
 
+	# weed out all routes that do not accept the media type that the
+	# client used for the request
+	@routes = $self->negotiate_receive_media($c, @routes);
+
+	croak "415 Unsupported Media Type" unless scalar @routes;
+
 	# weed out all routes that do not return any media type
 	# the client accepts
-	@routes = $self->negotiate_media($c, @routes);
+	@routes = $self->negotiate_return_media($c, @routes);
 
 	# do we have anything left? if not, return 406 error
 	croak "406 Not Acceptable" unless scalar @routes;
@@ -75,7 +80,41 @@ sub matching_routes {
 	return @routes;
 }
 
-sub negotiate_media {
+sub negotiate_receive_media {
+	my ($self, $c, @all_routes) = @_;
+
+	return @all_routes unless my $ct = $c->req->content_type;
+
+	# will hold all routes with acceptable receive types
+	my @routes;
+
+	# remove charset from content-type
+	if ($ct =~ m/^([^;]+)/) {
+		$ct = $1;
+	}
+
+	$c->log->debug("I have received $ct");
+
+	ROUTE: foreach (@all_routes) {
+		# does this route accept all media types?
+		unless (exists $_->{rules}->{accepts}) {
+			push(@routes, $_);
+			next ROUTE;
+		}
+
+		# okay, it has, what are we accepting?
+		foreach my $accept (@{$_->{rules}->{accepts}}) {
+			if ($accept eq $ct) {
+				push(@routes, $_);
+				next ROUTE;
+			}
+		}
+	}
+
+	return @routes;
+}
+
+sub negotiate_return_media {
 	my ($self, $c, @all_routes) = @_;
 
 	# will hold all routes with acceptable return types
@@ -88,30 +127,52 @@ sub negotiate_media {
 			('text/html');
 
 		# what routes do the client want?
-		foreach my $want (@{$c->wanted_mimes}) {
-			# does the client accept _everything_?
-			# if so, just return the first type we support.
-			# this will happen only in the end of the
-			# wanted_mimes list, so if the client explicitely
-			# accepts a type we support, it will have
-			# preference over this
-			if ($want->{mime} eq '*/*' && $want->{q} > 0) {
-				push(@routes, { media => $have[0], route => $_ });
-				next ROUTE;
-			}
-			
-			# okay, the client doesn't support */*, let's see what we have
-			foreach my $have (@have) {
-				if ($want->{mime} eq $have) {
-					# we return a MIME type the client wants
-					push(@routes, { media => $want->{mime}, route => $_ });
+		if (@{$c->wanted_mimes}) {
+			foreach my $want (@{$c->wanted_mimes}) {
+				# does the client accept _everything_?
+				# if so, just return the first type we support.
+				# this will happen only in the end of the
+				# wanted_mimes list, so if the client explicitely
+				# accepts a type we support, it will have
+				# preference over this
+				if ($want->{mime} eq '*/*' && $want->{q} > 0) {
+					push(@routes, { media => $have[0], route => $_ });
 					next ROUTE;
 				}
+				
+				# okay, the client doesn't support */*, let's see what we have
+				foreach my $have (@have) {
+					if ($want->{mime} eq $have) {
+						# we return a MIME type the client wants
+						push(@routes, { media => $want->{mime}, route => $_ });
+						next ROUTE;
+					}
+				}
 			}
+		} else {
+			push(@routes, { media => $have[0], route => $_ });
+			next ROUTE;
 		}
 	}
 	
 	return @routes;
+}
+
+sub negotiate_charset {
+	my ($self, $c) = @_;
+
+	if ($c->req->header('Accept-Charset')) {
+		my @chars = split(/,/, $c->req->header('Accept-Charset'));
+		foreach (@chars) {
+			my ($charset, $pref) = split(/;q=/, $_);
+			next unless defined $pref;
+			if ($charset =~ m/utf-?8/i && $pref == 0) {
+				croak "This server only supports the UTF-8 character set, unfortunately we are unable to fulfil your request.";
+			}
+		}
+	}
+
+	return 1;
 }
 
 __PACKAGE__->meta->make_immutable;

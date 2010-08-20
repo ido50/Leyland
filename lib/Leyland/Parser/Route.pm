@@ -24,7 +24,7 @@ sub rewrite {
 	# do we have 'accepts' and/or 'returns' rules?
 	while (scalar @parts > 1) {
 		my ($key, $value) = (shift(@parts)->[0], shift(@parts)->[0]);
-		if ($key eq 'accepts' || $key eq 'returns') {
+		if ($key eq 'accepts' || $key eq 'returns' || $key eq 'speaks') {
 			push(@new_parts, [$key.'='.$value, undef]);
 		} else {
 			$self->bail("I can't understand rule $key.");
