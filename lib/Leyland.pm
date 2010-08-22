@@ -129,7 +129,7 @@ sub handle {
 	
 	# invoke the first matching route
 	my $i = 0;
-	my $ret = $self->deserialize($c, $c->routes->[$i]->{route}->{code}->($c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+	my $ret = $self->deserialize($c, $c->routes->[$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
 
 	while ($c->pass_next && $i < scalar @{$c->routes} && $i < 100) { # $i is also used to prevent infinite loops
 		# we need to pass to the next matching route
@@ -138,7 +138,7 @@ sub handle {
 		$c->_pass(0);
 		
 		# invoke the subroutine of the new route
-		$ret = $self->deserialize($c, $c->routes->[++$i]->{route}->{code}->($c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+		$ret = $self->deserialize($c, $c->routes->[++$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
 	}
 
 	$c->res->body($ret);

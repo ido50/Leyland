@@ -22,7 +22,7 @@ sub add_route {
 	
 	if ($routes->EXISTS($regex)) {
 		my $thing = $routes->FETCH($regex);
-		$thing->{$method} = { code => $code, rules => $rules };
+		$thing->{$method} = { class => $class, code => $code, rules => $rules };
 	} else {
 		$routes->Push($regex => { $method => { code => $code, rules => $rules } });
 	}

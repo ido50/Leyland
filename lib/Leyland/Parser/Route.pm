@@ -34,6 +34,6 @@ sub rewrite {
 	$self->new_parts(\@new_parts);
 }
 
-sub inject {('my $c = shift;')}
+sub inject {('my ($self, $c) = (shift, shift);')}
 
 1;
