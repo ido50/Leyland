@@ -9,7 +9,7 @@ with 'Leyland::Logger';
 sub init_logger {
 	my ($self, $config) = @_;
 
-	my $s = Log::Shutton->new(app => $config->{appname}, env => $config->{env});
+	my $s = Log::Shutton->new(app => $config->{app}, env => $config->{env});
 
 	if ($config->{logger}->{outputs}) {
 		foreach (@{$config->{logger}->{outputs}}) {

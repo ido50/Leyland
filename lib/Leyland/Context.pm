@@ -30,6 +30,10 @@ has 'pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_pass');
 
 has 'stash' => (is => 'ro', isa => 'HashRef', default => sub { {} });
 
+has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
+
+has 'session' => (is => 'ro', isa => 'HashRef', predicate => 'has_session');
+
 sub _build_req {
 	my $self = shift;
 
@@ -64,6 +68,7 @@ sub template {
 	my ($self, $tmpl_name, $context) = @_;
 
 	$context->{c} = $self;
+	$context->{s} = $self->shutton;
 	foreach (keys %{$self->stash}) {
 		$context->{$_} = $self->stash->{$_} unless exists $context->{$_};
 	}
@@ -104,6 +109,22 @@ sub forward {
 
 	# just invoke the first matching route
 	return $routes[0]->{route}->{code}->($self, @{$routes[0]->{route}->{captures}});
+}
+
+sub loc {
+	my ($self, $realm, $text, @args) = @_;
+
+	return unless $realm && $text;
+
+	@args = () unless scalar @args;
+
+	my $id = $realm =~ m/^app$/i ? $self->config->{app} :
+		 $realm =~ m/^controller$/i ? $self->controller :
+		 'unknown';
+
+	my $lang = $self->has_session ? $self->session->{lang} : 'en_US';
+
+	return $self->shutton->localizer->loc(app => $self->config->{app}, realm => $realm, id => $id, lang => $lang, text => $text, args => \@args);
 }
 
 __PACKAGE__->meta->make_immutable;

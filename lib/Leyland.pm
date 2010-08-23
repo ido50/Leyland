@@ -16,6 +16,8 @@ has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
 
 has 'logger' => (is => 'ro', does => 'Leyland::Logger', writer => '_set_logger');
 
+has 'localizer' => (is => 'ro', does => 'Leyland::Localizer', writer => '_set_localizer');
+
 has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
 
 has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
@@ -65,6 +67,15 @@ sub BUILD {
 		load Leyland::Logger::LogHandler;
 		my $logger = Leyland::Logger::LogHandler->init();
 		$self->_set_logger($logger);
+	}
+
+	# init localizer, if any
+	if (exists $config->{localizer} && exists $config->{localizer}->{class}) {
+		my $class = 'Leyland::Localizer::'.$config->{localizer}->{class}
+			unless $config->{localizer}->{class} =~ s/^\+//;
+		load $class;
+		my $localizer = $class->init($config);
+		$self->_set_localizer($localizer);
 	}
 
 	# init views, if any, start with view modules in the app
@@ -129,6 +140,7 @@ sub handle {
 	
 	# invoke the first matching route
 	my $i = 0;
+	$c->_set_controller($c->routes->[$i]->{route}->{class});
 	my $ret = $self->deserialize($c, $c->routes->[$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
 
 	while ($c->pass_next && $i < scalar @{$c->routes} && $i < 100) { # $i is also used to prevent infinite loops
@@ -138,6 +150,7 @@ sub handle {
 		$c->_pass(0);
 		
 		# invoke the subroutine of the new route
+		$c->_set_controller($c->routes->[$i]->{route}->{class});
 		$ret = $self->deserialize($c, $c->routes->[++$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
 	}
 
@@ -177,7 +190,7 @@ sub deserialize {
 
 sub _default_config {
 	{
-		appname => 'ReqRes',
+		app => 'ReqRes',
 		env => 'development',
 		environments => {
 			development => {
@@ -191,6 +204,10 @@ sub _default_config {
 		},
 		logger => {
 			class => 'LogShutton',
+		},
+		localizer => {
+			class => 'Wolowitz',
+			db_name => 'wolowitz',
 		},
 		views => ['Tenjin'],
 	}

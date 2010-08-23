@@ -6,6 +6,7 @@ use namespace::autoclean;
 
 class_has 'prefix' => (is => 'rw', isa => 'Str', default => '');
 class_has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
+class_has 'localizer' => (is => 'ro', isa => 'Wolowitz', writer => '_set_localizer');
 
 sub add_route {
 	my ($class, $method, $regex, $code) = (shift, shift, shift, pop);
@@ -24,7 +25,7 @@ sub add_route {
 		my $thing = $routes->FETCH($regex);
 		$thing->{$method} = { class => $class, code => $code, rules => $rules };
 	} else {
-		$routes->Push($regex => { $method => { code => $code, rules => $rules } });
+		$routes->Push($regex => { $method => { class => $class, code => $code, rules => $rules } });
 	}
 	
 	$class->_set_routes($routes);

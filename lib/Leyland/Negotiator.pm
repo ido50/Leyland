@@ -71,7 +71,7 @@ sub matching_routes {
 				foreach my $m (split(/\|/, $ms)) {
 					next unless $m eq lc($c->req->method) || $m eq 'any';
 
-					push(@routes, { prefix => $_->{prefix}, route => $r, code => $route_meths->{$m}->{code}, rules => $route_meths->{$m}->{rules}, captures => \@captures });
+					push(@routes, { class => $route_meths->{$m}->{class}, prefix => $_->{prefix}, route => $r, code => $route_meths->{$m}->{code}, rules => $route_meths->{$m}->{rules}, captures => \@captures });
 				}
 			}
 		}
