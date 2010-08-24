@@ -109,7 +109,7 @@ sub handle {
 	my ($self, $env) = @_;
 
 	# create the context object
-	my %params = ( shutton => $self, env => $env, config => $self->config );
+	my %params = ( leyland => $self, env => $env, config => $self->config, json => $self->json, xml => $self->xml );
 	$params{views} = $self->views if $self->has_views;
 	my $c = Leyland::Context->new(%params);
 
@@ -125,6 +125,14 @@ sub handle {
 		$uri->path($newpath);
 		
 		$c->res->redirect($uri, 301);
+		return $c->res->finalize;
+	}
+
+	# is this an OPTIONS request?
+	if ($c->req->method eq 'OPTIONS') {
+		my @options = $self->conneg->find_options($c, $self->routes);
+		$c->res->status(204); # 204 No Content
+		$c->res->header('Allow' => join(', ', @options));
 		return $c->res->finalize;
 	}
 
@@ -190,8 +198,6 @@ sub deserialize {
 
 sub _default_config {
 	{
-		app => 'ReqRes',
-		env => 'development',
 		environments => {
 			development => {
 				minlevel => 'notice',
@@ -204,10 +210,6 @@ sub _default_config {
 		},
 		logger => {
 			class => 'LogShutton',
-		},
-		localizer => {
-			class => 'Wolowitz',
-			db_name => 'wolowitz',
 		},
 		views => ['Tenjin'],
 	}

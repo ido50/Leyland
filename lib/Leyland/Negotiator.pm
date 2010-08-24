@@ -4,6 +4,26 @@ use Moose;
 use namespace::autoclean;
 use Carp;
 
+sub find_options {
+	my ($self, $c, $app_routes) = @_;
+
+	my @pref_routes = $self->prefs_and_routes($c->req->path);
+
+	my @routes = $self->matching_routes($app_routes, @pref_routes);
+
+	# have we found any matching routes?
+	croak "404 Not Found" unless scalar @routes;
+
+	# okay, we have, let's see which HTTP methods are supported by
+	# these routes
+	my %meths = ( 'OPTIONS' => 1 );
+	foreach (@routes) {
+		$meths{$self->method_name($_->{method})} = 1;
+	}
+
+	return sort keys %meths;
+}
+
 sub find_routes {
 	my ($self, $c, $app_routes, $path) = @_;
 
@@ -11,22 +31,13 @@ sub find_routes {
 
 	# let's find all possible prefix/route combinations
 	# from the request path
-	my @pref_routes = ({ prefix => '', route => $path });
-	my ($prefix) = ($path =~ m!^(/[^/]+)!);
-	my $route = $' || '/';
-	my $i = 0; # counter to prevent infinite loops, probably should removed
-	while ($prefix && $i < 100) {
-		push(@pref_routes, { prefix => $prefix, route => $route });
-		
-		my ($suffix) = ($route =~ m!^(/[^/]+)!);
-		last unless $suffix;
-		$prefix .= $suffix;
-		$route = $' || '/';
-		$i++;
-	}
+	my @pref_routes = $self->prefs_and_routes($path);
 
-	# find all routes matching the request method and path
-	my @routes = $self->matching_routes($c, $app_routes, @pref_routes);
+	# find all routes matching the request path
+	my @routes = $self->matching_routes($app_routes, @pref_routes);
+
+	# weed out routes that do not match request method
+	@routes = $self->negotiate_method($c->req->method, @routes);
 
 	# have we found anything? if not, return 404 error
 	croak "404 Not Found" unless scalar @routes;
@@ -47,8 +58,28 @@ sub find_routes {
 	return @routes;
 }
 
+sub prefs_and_routes {
+	my ($self, $path) = @_;
+
+	my @pref_routes = ({ prefix => '', route => $path });
+	my ($prefix) = ($path =~ m!^(/[^/]+)!);
+	my $route = $' || '/';
+	my $i = 0; # counter to prevent infinite loops, probably should removed
+	while ($prefix && $i < 100) {
+		push(@pref_routes, { prefix => $prefix, route => $route });
+		
+		my ($suffix) = ($route =~ m!^(/[^/]+)!);
+		last unless $suffix;
+		$prefix .= $suffix;
+		$route = $' || '/';
+		$i++;
+	}
+
+	return @pref_routes;
+}
+
 sub matching_routes {
-	my ($self, $c, $app_routes, @pref_routes) = @_;
+	my ($self, $app_routes, @pref_routes) = @_;
 
 	my @routes;
 	foreach (@pref_routes) {		
@@ -66,15 +97,23 @@ sub matching_routes {
 			my $route_meths = $pref_routes->FETCH($r);
 
 			# find all routes that support the request method (i.e. GET, POST, etc.)
-			foreach my $ms (sort { $a =~ m/\|/ <=> $b =~ m/\|/ || $a eq 'any' || $b eq 'any' } keys %$route_meths) {
+			foreach my $m (sort { $a eq 'any' || $b eq 'any' } keys %$route_meths) {
 				# it does, but is there a subroutine for the exact request method?
-				foreach my $m (split(/\|/, $ms)) {
-					next unless $m eq lc($c->req->method) || $m eq 'any';
-
-					push(@routes, { class => $route_meths->{$m}->{class}, prefix => $_->{prefix}, route => $r, code => $route_meths->{$m}->{code}, rules => $route_meths->{$m}->{rules}, captures => \@captures });
-				}
+				push(@routes, { method => $m, class => $route_meths->{$m}->{class}, prefix => $_->{prefix}, route => $r, code => $route_meths->{$m}->{code}, rules => $route_meths->{$m}->{rules}, captures => \@captures });
 			}
 		}
+	}
+
+	return @routes;
+}
+
+sub negotiate_method {
+	my ($self, $method, @all_routes) = @_;
+
+	my @routes;
+	foreach (@all_routes) {
+		next unless $self->method_name($_->{method}) eq $method || $_->{method} eq 'any';
+		push(@routes, $_);
 	}
 
 	return @routes;
@@ -173,6 +212,16 @@ sub negotiate_charset {
 	}
 
 	return 1;
+}
+
+sub method_name {
+	my ($self, $meth) = @_;
+
+	# replace 'del' with 'delete'
+	$meth = 'delete' if $meth eq 'del';
+
+	# return this in uppercase
+	return uc($meth);
 }
 
 __PACKAGE__->meta->make_immutable;

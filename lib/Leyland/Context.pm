@@ -6,7 +6,7 @@ use Plack::Request;
 use Plack::Response;
 use Carp;
 
-has 'shutton' => (is => 'ro', isa => 'Leyland', required => 1);
+has 'leyland' => (is => 'ro', isa => 'Leyland', required => 1);
 
 has 'env' => (is => 'ro', isa => 'HashRef', required => 1);
 
@@ -33,6 +33,10 @@ has 'stash' => (is => 'ro', isa => 'HashRef', default => sub { {} });
 has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
 
 has 'session' => (is => 'ro', isa => 'HashRef', predicate => 'has_session');
+
+has 'json' => (is => 'ro', isa => 'Object', required => 1); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
+
+has 'xml' => (is => 'ro', isa => 'XML::TreePP', required => 1);
 
 sub _build_req {
 	my $self = shift;
@@ -68,7 +72,7 @@ sub template {
 	my ($self, $tmpl_name, $context) = @_;
 
 	$context->{c} = $self;
-	$context->{s} = $self->shutton;
+	$context->{l} = $self->leyland;
 	foreach (keys %{$self->stash}) {
 		$context->{$_} = $self->stash->{$_} unless exists $context->{$_};
 	}
@@ -103,7 +107,7 @@ sub forward {
 
 	croak "500 Internal Server Error" unless $path;
 
-	my @routes = $self->shutton->conneg->find_routes($self, $self->shutton->routes, $path);
+	my @routes = $self->leyland->conneg->find_routes($self, $self->leyland->routes, $path);
 
 	croak "500 Internal Server Error" unless scalar @routes;
 
@@ -124,7 +128,7 @@ sub loc {
 
 	my $lang = $self->has_session ? $self->session->{lang} : 'en_US';
 
-	return $self->shutton->localizer->loc(app => $self->config->{app}, realm => $realm, id => $id, lang => $lang, text => $text, args => \@args);
+	return $self->leyland->localizer->loc(app => $self->config->{app}, realm => $realm, id => $id, lang => $lang, text => $text, args => \@args);
 }
 
 __PACKAGE__->meta->make_immutable;

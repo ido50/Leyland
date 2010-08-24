@@ -1,5 +1,7 @@
 package Leyland::Logger::LogShutton;
 
+use lib '/home/ido/hub/Log-Shutton/lib', '/home/ido/git/Log-Shutton/lib';
+
 use Moose;
 use namespace::autoclean;
 use Log::Shutton;
