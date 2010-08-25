@@ -11,6 +11,7 @@ use Carp;
 use Data::Dumper;
 use Module::Load;
 use Tie::IxHash;
+use Try::Tiny;
 
 has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
 
@@ -140,16 +141,32 @@ sub handle {
 	# the client supports that. If not, let's return an error
 	$self->conneg->negotiate_charset($c);
 
+	my $exp;
+
 	# find matching routes (will issue an error if none found or none
 	# return client's acceptable media types)
-	my @routes = $self->conneg->find_routes($c, $self->routes);
+	my @routes = try {
+		$self->conneg->find_routes($c, $self->routes);
+	} catch {
+		croak $_ unless ref $_ && $_->isa('Leyland::Exception');
+		$exp = $_;
+	};
+	return $self->_handle_exception($c, $exp) if $exp;
 
 	$c->_set_routes(\@routes);
 	
 	# invoke the first matching route
 	my $i = 0;
 	$c->_set_controller($c->routes->[$i]->{route}->{class});
-	my $ret = $self->deserialize($c, $c->routes->[$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+
+	my $ret = try {
+		$self->_deserialize($c, $c->routes->[$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+	} catch {
+		croak $_ unless ref $_ && $_->isa('Leyland::Exception');
+		$exp = $_;
+	};
+
+	return $self->_handle_exception($c, $exp) if $exp;
 
 	while ($c->pass_next && $i < scalar @{$c->routes} && $i < 100) { # $i is also used to prevent infinite loops
 		# we need to pass to the next matching route
@@ -159,7 +176,15 @@ sub handle {
 		
 		# invoke the subroutine of the new route
 		$c->_set_controller($c->routes->[$i]->{route}->{class});
-		$ret = $self->deserialize($c, $c->routes->[++$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+		
+		$ret = try {
+			$self->_deserialize($c, $c->routes->[++$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+		} catch {
+			croak $_ unless ref $_ && $_->isa('Leyland::Exception');
+			$exp = $_;
+		};
+		
+		return $self->_handle_exception($c, $exp) if $exp;
 	}
 
 	$c->res->body($ret);
@@ -171,7 +196,58 @@ sub log {
 	$_[0]->logger->logger;
 }
 
-sub deserialize {
+sub _handle_exception {
+	my ($self, $c, $exp) = @_;
+
+	$c->res->status($exp->code);
+
+	# do we have templates for any of the client's requested MIME types?
+	# if so, render the first one you find.
+	if ($exp->has_mimes) {
+		foreach (@{$c->wanted_mimes}) {
+			if ($exp->has_mime($_->{mime})) {
+				my $err = !ref $exp->error || ref $exp->error eq 'SCALAR' ? { error => $exp->error } : $exp->error;
+				my $ret = $c->template($exp->mime($_->{mime}), $err);
+				$c->res->content_type($_->{mime}.';charset=UTF-8');
+				$c->res->body($ret);
+				return $c->res->finalize;
+			}
+		}
+	}
+
+	# we haven't found any templates for the request mime types, let's
+	# attempt to deserialize the error ourselves if the client accepts
+	# JSON or XML
+	foreach (@{$c->wanted_mimes}) {
+		if ($_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml') {
+			$c->log->debug("I will attempt to render an error template for error ".ref($exp->error));
+			my $err = !ref $exp->error || ref $exp->error eq 'SCALAR' ? { error => $exp->error } : $exp->error;
+			$c->res->content_type($_->{mime}.';charset=UTF-8');
+			$c->res->body($self->_deserialize($c, $err, $_->{mime}));
+			return $c->res->finalize;
+		} elsif ($_->{mime} eq 'text/html' || $_->{mime} eq 'text/plain') {
+			$c->log->debug("I will attempt to return html/text for error ".ref($exp->error));
+			my $ret = !ref $exp->error || ref $exp->error eq 'SCALAR' ? $exp->error : Dumper($exp->error);
+			$ret =~ s/^\$VAR1 = //;
+			$ret =~ s/;$//;
+			$c->res->content_type($_->{mime}.';charset=UTF-8');
+			$c->res->body($ret);
+			return $c->res->finalize;
+		}
+	}
+
+	# We do not support none of the MIME types the client wants,
+	# let's return plain text
+	my $ret = !ref $exp->error || ref $exp->error eq 'SCALAR' ? $exp->error : Dumper($exp->error);
+	$ret =~ s/^\$VAR1 = //;
+	$ret =~ s/;$//;
+	$c->log->debug("I'm just gonna return text for error ".ref($exp->error));
+	$c->res->content_type('text/plain;charset=UTF-8');
+	$c->res->body($ret);
+	return $c->res->finalize;
+}
+
+sub _deserialize {
 	my ($self, $c, $obj, $want) = @_;
 
 	my $ct = $want.';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;

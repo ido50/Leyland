@@ -40,20 +40,20 @@ sub find_routes {
 	@routes = $self->negotiate_method($c->req->method, @routes);
 
 	# have we found anything? if not, return 404 error
-	croak "404 Not Found" unless scalar @routes;
+	$c->exception({ code => 404 }) unless scalar @routes;
 
 	# weed out all routes that do not accept the media type that the
 	# client used for the request
 	@routes = $self->negotiate_receive_media($c, @routes);
 
-	croak "415 Unsupported Media Type" unless scalar @routes;
+	$c->exception({ code => 415 }) unless scalar @routes;
 
 	# weed out all routes that do not return any media type
 	# the client accepts
 	@routes = $self->negotiate_return_media($c, @routes);
 
 	# do we have anything left? if not, return 406 error
-	croak "406 Not Acceptable" unless scalar @routes;
+	$c->exception({ code => 406 }) unless scalar @routes;
 
 	return @routes;
 }

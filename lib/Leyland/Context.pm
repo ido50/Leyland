@@ -4,6 +4,7 @@ use Moose;
 use namespace::autoclean;
 use Plack::Request;
 use Plack::Response;
+use Leyland::Exception;
 use Carp;
 
 has 'leyland' => (is => 'ro', isa => 'Leyland', required => 1);
@@ -81,7 +82,7 @@ sub template {
 
 	return unless scalar @{$self->views};
 
-	$self->views->[0]->render($tmpl_name, $context, $use_layout);
+	return $self->views->[0]->render($tmpl_name, $context, $use_layout);
 }
 
 sub _build_mimes {
@@ -133,6 +134,10 @@ sub loc {
 	my $lang = $self->has_session ? $self->session->{lang} : 'en_US';
 
 	return $self->leyland->localizer->loc(app => $self->config->{app}, realm => $realm, id => $id, lang => $lang, text => $text, args => \@args);
+}
+
+sub exception {
+	Leyland::Exception->throw($_[1]);
 }
 
 __PACKAGE__->meta->make_immutable;
