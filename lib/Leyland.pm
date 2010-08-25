@@ -207,7 +207,7 @@ sub _handle_exception {
 		foreach (@{$c->wanted_mimes}) {
 			if ($exp->has_mime($_->{mime})) {
 				my $err = !ref $exp->error || ref $exp->error eq 'SCALAR' ? { error => $exp->error } : $exp->error;
-				my $ret = $c->template($exp->mime($_->{mime}), $err);
+				my $ret = $c->template($exp->mime($_->{mime}), $err, $exp->use_layout);
 				$c->res->content_type($_->{mime}.';charset=UTF-8');
 				$c->res->body($ret);
 				return $c->res->finalize;

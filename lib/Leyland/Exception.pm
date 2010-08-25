@@ -45,6 +45,8 @@ has 'error' => (is => 'ro', predicate => 'has_error', writer => '_set_error');
 
 has 'mimes' => (is => 'ro', isa => 'HashRef', predicate => 'has_mimes');
 
+has 'use_layout' => (is => 'ro', isa => 'Bool', default => 1);
+
 sub BUILD {
 	my $self = shift;
 
