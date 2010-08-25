@@ -16,7 +16,7 @@ has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
 
 has 'logger' => (is => 'ro', does => 'Leyland::Logger', writer => '_set_logger');
 
-has 'localizer' => (is => 'ro', does => 'Leyland::Localizer', writer => '_set_localizer');
+has 'localizer' => (is => 'ro', does => 'Leyland::Localizer', predicate => 'has_localizer', writer => '_set_localizer');
 
 has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
 

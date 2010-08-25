@@ -69,7 +69,9 @@ sub view {
 }
 
 sub template {
-	my ($self, $tmpl_name, $context) = @_;
+	my ($self, $tmpl_name, $context, $use_layout) = @_;
+
+	$use_layout = 1 unless defined $use_layout;
 
 	$context->{c} = $self;
 	$context->{l} = $self->leyland;
@@ -79,7 +81,7 @@ sub template {
 
 	return unless scalar @{$self->views};
 
-	$self->views->[0]->render($tmpl_name, $context);
+	$self->views->[0]->render($tmpl_name, $context, $use_layout);
 }
 
 sub _build_mimes {
@@ -117,6 +119,8 @@ sub forward {
 
 sub loc {
 	my ($self, $realm, $text, @args) = @_;
+
+	return $text unless $self->leyland->has_localizer;
 
 	return unless $realm && $text;
 

@@ -13,9 +13,11 @@ sub _init_engine {
 }
 
 sub render {
-	my ($self, $view, $context) = @_;
+	my ($self, $view, $context, $use_layout) = @_;
 
-	return $self->engine->render($view, $context);
+	$use_layout = 1 unless defined $use_layout;
+
+	return $self->engine->render($view, $context, $use_layout);
 }
 
 __PACKAGE__->meta->make_immutable;
