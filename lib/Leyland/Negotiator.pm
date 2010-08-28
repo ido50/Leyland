@@ -89,6 +89,8 @@ sub matching_routes {
 
 		my $pref_routes = $app_routes->FETCH($pref_name);
 		
+		next unless $pref_routes;
+		
 		# find matching routes in this prefix
 		foreach my $r ($pref_routes->Keys) {
 			# does the requested route match the current route?

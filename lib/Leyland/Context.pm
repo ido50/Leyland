@@ -106,7 +106,7 @@ sub _build_mimes {
 }
 
 sub forward {
-	my ($self, $path) = @_;
+	my ($self, $path) = (shift, shift);
 
 	croak "500 Internal Server Error" unless $path;
 
@@ -115,25 +115,11 @@ sub forward {
 	croak "500 Internal Server Error" unless scalar @routes;
 
 	# just invoke the first matching route
-	return $routes[0]->{route}->{code}->($self, @{$routes[0]->{route}->{captures}});
+	return $routes[0]->{route}->{code}->($self, @{$routes[0]->{route}->{captures}}, @_);
 }
 
 sub loc {
-	my ($self, $realm, $text, @args) = @_;
-
-	return $text unless $self->leyland->has_localizer;
-
-	return unless $realm && $text;
-
-	@args = () unless scalar @args;
-
-	my $id = $realm =~ m/^app$/i ? $self->config->{app} :
-		 $realm =~ m/^controller$/i ? $self->controller :
-		 'unknown';
-
-	my $lang = $self->has_session ? $self->session->{lang} : 'en_US';
-
-	return $self->leyland->localizer->loc(app => $self->config->{app}, realm => $realm, id => $id, lang => $lang, text => $text, args => \@args);
+	shift->leyland->localizer->loc(@_);
 }
 
 sub exception {
