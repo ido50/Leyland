@@ -39,6 +39,8 @@ has 'json' => (is => 'ro', isa => 'Object', required => 1); # 'isa' should be 'J
 
 has 'xml' => (is => 'ro', isa => 'XML::TreePP', required => 1);
 
+has 'died' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_died');
+
 sub _build_req {
 	my $self = shift;
 
@@ -71,6 +73,9 @@ sub view {
 
 sub template {
 	my ($self, $tmpl_name, $context, $use_layout) = @_;
+
+	# first, run the pre_template sub
+	$self->controller->pre_template($self, $tmpl_name, $context);
 
 	$use_layout = 1 unless defined $use_layout;
 

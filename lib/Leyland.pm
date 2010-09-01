@@ -141,14 +141,12 @@ sub handle {
 	# the client supports that. If not, let's return an error
 	$self->conneg->negotiate_charset($c);
 
-	my $exp;
-
 	# find matching routes (will issue an error if none found or none
 	# return client's acceptable media types)
+	my $exp;
 	my @routes = try {
 		$self->conneg->find_routes($c, $self->routes);
 	} catch {
-		croak $_ unless ref $_ && $_->isa('Leyland::Exception');
 		$exp = $_;
 	};
 	return $self->_handle_exception($c, $exp) if $exp;
@@ -157,16 +155,12 @@ sub handle {
 	
 	# invoke the first matching route
 	my $i = 0;
-	$c->_set_controller($c->routes->[$i]->{route}->{class});
-
 	my $ret = try {
-		$self->_deserialize($c, $c->routes->[$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+		$self->_invoke_route($c, $i);
 	} catch {
-		croak $_ unless ref $_ && $_->isa('Leyland::Exception');
-		$exp = $_;
+		$self->_handle_exception($c, $_);
 	};
-
-	return $self->_handle_exception($c, $exp) if $exp;
+	return $ret if $c->died;
 
 	while ($c->pass_next && $i < scalar @{$c->routes} && $i < 100) { # $i is also used to prevent infinite loops
 		# we need to pass to the next matching route
@@ -174,17 +168,14 @@ sub handle {
 		# so we don't try to do this infinitely
 		$c->_pass(0);
 		
-		# invoke the subroutine of the new route
-		$c->_set_controller($c->routes->[$i]->{route}->{class});
-		
 		$ret = try {
-			$self->_deserialize($c, $c->routes->[++$i]->{route}->{code}->($c->routes->[$i]->{route}->{class}, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+			$self->_invoke_route($c, $i);
 		} catch {
-			croak $_ unless ref $_ && $_->isa('Leyland::Exception');
-			$exp = $_;
+			$self->_handle_exception($c, $_);
 		};
+		return $ret if $c->died;
 		
-		return $self->_handle_exception($c, $exp) if $exp;
+		$i++;
 	}
 
 	$c->res->body($ret);
@@ -196,8 +187,34 @@ sub log {
 	$_[0]->logger->logger;
 }
 
+sub _invoke_route {
+	my ($self, $c, $i) = @_;
+
+	$c->_set_controller($c->routes->[$i]->{route}->{class});
+	
+	# but first invoke all 'auto' subs up to the matching route's controller
+	foreach ($self->_route_parents($c->routes->[$i]->{route}->{prefix})) {
+		$_->auto($c);
+	}
+
+	# then invoke the pre_route subroutine
+	$c->controller->pre_route($c);
+
+	# invoke the route itself
+	my $ret = $self->_deserialize($c, $c->routes->[$i]->{route}->{code}->($c->controller, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+
+	# invoke the post_route subroutine
+	$c->controller->post_route($c);
+
+	return $ret;
+}
+
 sub _handle_exception {
 	my ($self, $c, $exp) = @_;
+	
+	$c->_set_died(1);
+	
+	croak $_ unless ref $_ && $_->isa('Leyland::Exception');
 
 	$c->res->status($exp->code);
 
@@ -220,13 +237,11 @@ sub _handle_exception {
 	# JSON or XML
 	foreach (@{$c->wanted_mimes}) {
 		if ($_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml') {
-			$c->log->debug("I will attempt to render an error template for error ".ref($exp->error));
 			my $err = !ref $exp->error || ref $exp->error eq 'SCALAR' ? { error => $exp->error } : $exp->error;
 			$c->res->content_type($_->{mime}.';charset=UTF-8');
 			$c->res->body($self->_deserialize($c, $err, $_->{mime}));
 			return $c->res->finalize;
 		} elsif ($_->{mime} eq 'text/html' || $_->{mime} eq 'text/plain') {
-			$c->log->debug("I will attempt to return html/text for error ".ref($exp->error));
 			my $ret = !ref $exp->error || ref $exp->error eq 'SCALAR' ? $exp->error : Dumper($exp->error);
 			$ret =~ s/^\$VAR1 = //;
 			$ret =~ s/;$//;
@@ -241,7 +256,6 @@ sub _handle_exception {
 	my $ret = !ref $exp->error || ref $exp->error eq 'SCALAR' ? $exp->error : Dumper($exp->error);
 	$ret =~ s/^\$VAR1 = //;
 	$ret =~ s/;$//;
-	$c->log->debug("I'm just gonna return text for error ".ref($exp->error));
 	$c->res->content_type('text/plain;charset=UTF-8');
 	$c->res->body($ret);
 	return $c->res->finalize;
@@ -270,6 +284,39 @@ sub _deserialize {
 		# return as is
 		return $obj;
 	}
+}
+
+sub _route_parents {
+	my ($self, $prefix) = @_;
+	
+	my ($first, $last);
+
+	foreach ($self->controllers) {
+		if ($_->prefix eq '') {
+			$first = $_;
+		} elsif ($_->prefix eq $prefix) {
+			$last = $_;
+		}
+	}
+	
+	my @parents = ($first);
+
+	while ($prefix) {
+		$prefix =~ s!/[^/]+$!!;
+		next unless $self->routes->EXISTS($prefix);
+		
+		# get the class
+		foreach my $cont ($self->controllers) {
+			if ($cont->prefix eq $prefix) {
+				push(@parents, $cont);
+				last;
+			}
+		}
+	}
+
+	push(@parents, $last);
+
+	return @parents;
 }
 
 sub _default_config {
