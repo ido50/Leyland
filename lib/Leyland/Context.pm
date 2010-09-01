@@ -126,4 +126,25 @@ sub exception {
 	Leyland::Exception->throw($_[1]);
 }
 
+sub uri_for {
+	my ($self, @args) = @_;
+
+	my $params = pop @args if scalar @args;
+	if ($params && ref $params ne 'HASH') {
+		push(@args, $params);
+	}
+	
+	foreach (@args) {
+		s!^/!!;
+	}
+
+	my $uri = $self->req->base;
+	$uri   .= join('/', @args) if scalar @args;
+	if ($params) {
+		$uri .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
+	}
+
+	return URI->new($uri);
+}
+
 __PACKAGE__->meta->make_immutable;
