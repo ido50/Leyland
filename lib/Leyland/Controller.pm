@@ -37,12 +37,12 @@ sub set_prefix {
 	$class->prefix($code->());
 }
 
-sub auto { 1; }
+sub auto { 1 }
 
-sub pre_route { 1; }
+sub pre_route { 1 }
 
-sub pre_template { 1; }
+sub pre_template { 1 }
 
-sub post_route { 1; }
+sub post_route { 1 }
 
 1;

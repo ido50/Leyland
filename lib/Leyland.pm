@@ -290,6 +290,8 @@ sub _route_parents {
 	my ($self, $prefix) = @_;
 	
 	my ($first, $last);
+	
+	my @parents;
 
 	foreach ($self->controllers) {
 		if ($_->prefix eq '') {
@@ -299,7 +301,7 @@ sub _route_parents {
 		}
 	}
 	
-	my @parents = ($first);
+	push(@parents, $first) if $first;
 
 	while ($prefix) {
 		$prefix =~ s!/[^/]+$!!;
@@ -314,7 +316,7 @@ sub _route_parents {
 		}
 	}
 
-	push(@parents, $last);
+	push(@parents, $last) if $last;
 
 	return @parents;
 }
