@@ -5,6 +5,7 @@ use namespace::autoclean;
 use Plack::Request;
 use Plack::Response;
 use Leyland::Exception;
+use Encode;
 use Carp;
 
 has 'leyland' => (is => 'ro', isa => 'Leyland', required => 1);
@@ -71,12 +72,19 @@ sub view {
 	croak "Can't find a view named $name.";
 }
 
-sub template {
+sub render {
 	my ($self, $tmpl_name, $context, $use_layout) = @_;
 
 	# first, run the pre_template sub
-	$self->controller->pre_template($self, $tmpl_name, $context);
+	$self->controller->pre_template($self, $tmpl_name, $context, $use_layout);
 
+	# allow passing $use_layout but not passing $context
+	if (defined $context && ref $context ne 'HASH') {
+		$use_layout = $context;
+		$context = {};
+	}
+
+	# default $use_layout to 1
 	$use_layout = 1 unless defined $use_layout;
 
 	$context->{c} = $self;
@@ -88,6 +96,10 @@ sub template {
 	return unless scalar @{$self->views};
 
 	return $self->views->[0]->render($tmpl_name, $context, $use_layout);
+}
+
+sub template {
+	Encode::encode('utf8', shift->render(@_));
 }
 
 sub _build_mimes {
@@ -137,6 +149,7 @@ sub uri_for {
 	my $params = pop @args if scalar @args;
 	if ($params && ref $params ne 'HASH') {
 		push(@args, $params);
+		undef $params;
 	}
 	
 	foreach (@args) {
@@ -145,7 +158,7 @@ sub uri_for {
 
 	my $uri = $self->req->base;
 	$uri   .= join('/', @args) if scalar @args;
-	if ($params) {
+	if ($params && ref $params eq 'HASH') {
 		$uri .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
 	}
 
