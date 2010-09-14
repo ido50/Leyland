@@ -104,6 +104,9 @@ sub BUILD {
 		$routes->Push($prefix => $_->routes);
 	}
 	$self->_set_routes($routes);
+
+	# invoke setup method
+	$self->setup();
 }
 
 sub handle {
@@ -184,6 +187,10 @@ sub handle {
 
 sub log {
 	$_[0]->logger->logger;
+}
+
+sub setup {
+	# meant to be overriden
 }
 
 sub _invoke_route {
