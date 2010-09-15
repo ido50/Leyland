@@ -50,7 +50,7 @@ sub _build_req {
 }
 
 sub _build_session {
-	return exists $_[0]->env->{'psgix.session'} ? $_[0]->env->{'psgix.session'} : undef;
+	return exists $_[0]->env->{'psgix.session'} ? $_[0]->env->{'psgix.session'} : {};
 }
 
 sub pass {
