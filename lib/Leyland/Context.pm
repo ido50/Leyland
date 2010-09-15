@@ -7,6 +7,7 @@ use Plack::Response;
 use Leyland::Exception;
 use Encode;
 use Carp;
+use Module::Load;
 
 has 'leyland' => (is => 'ro', isa => 'Leyland', required => 1);
 
@@ -34,7 +35,9 @@ has 'stash' => (is => 'ro', isa => 'HashRef', default => sub { {} });
 
 has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
 
-has 'session' => (is => 'ro', isa => 'HashRef', predicate => 'has_session');
+has 'session' => (is => 'ro', isa => 'HashRef', lazy_build => 1);
+
+has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user');
 
 has 'json' => (is => 'ro', isa => 'Object', required => 1); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
 
@@ -43,9 +46,11 @@ has 'xml' => (is => 'ro', isa => 'XML::TreePP', required => 1);
 has 'died' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_died');
 
 sub _build_req {
-	my $self = shift;
+	Plack::Request->new(shift->env);
+}
 
-	Plack::Request->new($self->env);
+sub _build_session {
+	return exists $_[0]->env->{'psgix.session'} ? $_[0]->env->{'psgix.session'} : undef;
 }
 
 sub pass {
