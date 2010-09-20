@@ -19,6 +19,10 @@ sub add_route {
 		}
 	}
 
+	$rules->{accepts} ||= 'text/html';
+	$rules->{returns} ||= 'text/html';
+	$rules->{is} ||= 'external';
+
 	my $routes = $class->has_routes ? $class->routes : Tie::IxHash->new;
 	
 	if ($routes->EXISTS($regex)) {

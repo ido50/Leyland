@@ -12,6 +12,7 @@ use Data::Dumper;
 use Module::Load;
 use Tie::IxHash;
 use Try::Tiny;
+use Text::SimpleTable;
 
 has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
 
@@ -58,6 +59,8 @@ sub BUILD {
 	
 	my $config = $self->config;
 
+	$config->{env} ||= 'development';
+
 	# init logger, and if none are set, use Log::Handler
 	if (exists $config->{logger} && exists $config->{logger}->{class}) {
 		my $class = 'Leyland::Logger::'.$config->{logger}->{class};
@@ -83,8 +86,6 @@ sub BUILD {
 	my @views = $self->_views || ();
 	# now load views defined in the config file
 	VIEW: foreach (@{$config->{views}}) {
-		$self->log->info("Looking at view $_");
-
 		# have we already loaded this view in the first step?
 		foreach my $v ($self->_views) {
 			next VIEW if $v eq $_;
@@ -107,6 +108,9 @@ sub BUILD {
 
 	# invoke setup method
 	$self->setup();
+
+	# print debug information
+	$self->_initial_debug_info;
 }
 
 sub handle {
@@ -343,6 +347,57 @@ sub _default_config {
 			class => 'LogShutton',
 		},
 		views => ['Tenjin'],
+	}
+}
+
+sub _initial_debug_info {
+	my $self = shift;
+
+	my @views;
+	foreach (@{$self->views}) {
+		my $view = ref $_;
+		$view =~ s/^Leyland::View:://;
+		push(@views, $view);
+	}
+
+	my $logger = ref $self->logger;
+	$logger =~ s/^Leyland::Logger:://;
+
+	my $t1 = Text::SimpleTable->new(90);
+	$t1->row($self->config->{app}. ' (powered by Leyland)');
+	$t1->hr;
+	$t1->row('Current environment: '.$self->config->{env});
+	$t1->row('Avilable views: '.join(', ', @views));
+	$t1->row('Logger: '.$logger);
+	
+	if ($self->has_localizer) {
+		my $loc = ref $self->localizer;
+		$loc =~ s/^Leyland::Localizer:://;
+		$t1->row('Localizer: '.$loc);
+	}
+
+	print STDERR $t1->draw, "Available routes:\n";
+
+	if ($self->has_routes) {
+		my $t2 = Text::SimpleTable->new([12, 'Prefix'], [20, 'Regex'], [7, 'Method'], [14, 'Accepts'], [14, 'Returns'], [8, 'Is']);
+
+		foreach ($self->routes->Keys) {
+			my $pre = $self->routes->FETCH($_);
+			foreach my $r ($pre->Keys) {
+				my ($regex) = ($r =~ m/^\(\?-xism:(.+)\)$/);
+				my $reg = $pre->FETCH($r);
+				foreach my $m (keys %$reg) {
+					my $returns = ref $reg->{$m}->{rules}->{returns} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{returns}}) : $reg->{$m}->{rules}->{returns};
+					my $accepts = ref $reg->{$m}->{rules}->{accepts} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{accepts}}) : $reg->{$m}->{rules}->{accepts};
+					my $is = ref $reg->{$m}->{rules}->{is} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{is}}) : $reg->{$m}->{rules}->{is};
+					$t2->row($_, $regex, uc($m), $accepts, $returns, $is);
+				}
+			}
+		}
+
+		print STDERR $t2->draw;
+	} else {
+		print STDERR "-- No routes available ! --\n";
 	}
 }
 
