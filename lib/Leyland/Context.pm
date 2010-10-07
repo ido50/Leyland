@@ -109,7 +109,7 @@ sub template {
 }
 
 sub structure {
-	my ($obj, $want) = @_;
+	my ($self, $obj, $want) = @_;
 	
 	if ($want eq 'application/json') {
 		return $self->json->to_json($obj);
