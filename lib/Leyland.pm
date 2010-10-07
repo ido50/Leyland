@@ -279,8 +279,10 @@ sub _deserialize {
 
 	if (ref $obj eq 'ARRAY' && scalar @$obj == 2 && ref $obj->[0] eq 'HASH') {
 		# render specified template
-		if (exists $obj->[0]->{$want} && $obj->[0]->{$want} eq '') {
+		if ((exists $obj->[0]->{$want} && $obj->[0]->{$want} eq '') || !exists $obj->[0]->{$want}) {
 			# empty string for template name means deserialize
+			# same goes if the route returns the wanted type
+			# but has no template rule for it
 			return $c->structure($obj->[1], $want);
 		} else {
 			return $c->template($obj->[0]->{$want}, $obj->[1]);
