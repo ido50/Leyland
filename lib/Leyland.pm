@@ -273,19 +273,17 @@ sub _deserialize {
 	my $ct = $want.';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;
 	$c->res->content_type($ct);
 
-	if (ref $obj eq 'ARRAY' && scalar @$obj == 2) {
+	if (ref $obj eq 'ARRAY' && scalar @$obj == 2 && ref $obj->[0] eq 'HASH') {
 		# render specified template
-		return $c->template($obj->[0]->{$want}, $obj->[1]);
+		if (exists $obj->[0]->{$want} && $obj->[0]->{$want} eq '') {
+			# empty string for template name means deserialize
+			return $c->structure($obj->[1], $want);
+		} else {
+			return $c->template($obj->[0]->{$want}, $obj->[1]);
+		}
 	} elsif (ref $obj eq 'ARRAY' || ref $obj eq 'HASH') {
 		# deserialize according to wanted type
-		if ($want eq 'application/json') {
-			return $self->json->to_json($obj);
-		} elsif ($want eq 'application/atom+xml' || $want eq 'application/xml') {
-			return $self->xml->write($obj);
-		} else {
-			# just use Data::Dumper
-			return Dumper($obj);
-		}			
+		return $c->structure($obj, $want);
 	} else { # implied(?): ref $obj eq 'SCALAR'
 		# return as is
 		return $obj;

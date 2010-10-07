@@ -8,6 +8,7 @@ use Leyland::Exception;
 use Encode;
 use Carp;
 use Module::Load;
+use Data::Dumper;
 
 has 'leyland' => (is => 'ro', isa => 'Leyland', required => 1);
 
@@ -105,6 +106,19 @@ sub render {
 
 sub template {
 	Encode::encode('utf8', shift->render(@_));
+}
+
+sub structure {
+	my ($obj, $want) = @_;
+	
+	if ($want eq 'application/json') {
+		return $self->json->to_json($obj);
+	} elsif ($want eq 'application/atom+xml' || $want eq 'application/xml') {
+		return $self->xml->write($obj);
+	} else {
+		# just use Data::Dumper
+		return Dumper($obj);
+	}
 }
 
 sub _build_mimes {
