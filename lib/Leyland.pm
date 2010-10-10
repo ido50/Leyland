@@ -355,7 +355,7 @@ sub _initial_debug_info {
 	my $self = shift;
 
 	my @views;
-	foreach (@{$self->views}) {
+	foreach (sort @{$self->views}) {
 		my $view = ref $_;
 		$view =~ s/^Leyland::View:://;
 		push(@views, $view);
@@ -382,16 +382,18 @@ sub _initial_debug_info {
 	if ($self->has_routes) {
 		my $t2 = Text::SimpleTable->new([12, 'Prefix'], [20, 'Regex'], [7, 'Method'], [14, 'Accepts'], [14, 'Returns'], [8, 'Is']);
 
-		foreach ($self->routes->Keys) {
+		foreach (sort { ($b eq '_root_') <=> ($a eq '_root_') || $a cmp $b } $self->routes->Keys) {
+			my $c = $_;
+			$c =~ s!_root_!(root)!;
 			my $pre = $self->routes->FETCH($_);
-			foreach my $r ($pre->Keys) {
+			foreach my $r (sort $pre->Keys) {
 				my ($regex) = ($r =~ m/^\(\?-xism:(.+)\)$/);
 				my $reg = $pre->FETCH($r);
-				foreach my $m (keys %$reg) {
+				foreach my $m (sort keys %$reg) {
 					my $returns = ref $reg->{$m}->{rules}->{returns} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{returns}}) : $reg->{$m}->{rules}->{returns};
 					my $accepts = ref $reg->{$m}->{rules}->{accepts} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{accepts}}) : $reg->{$m}->{rules}->{accepts};
 					my $is = ref $reg->{$m}->{rules}->{is} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{is}}) : $reg->{$m}->{rules}->{is};
-					$t2->row($_, $regex, uc($m), $accepts, $returns, $is);
+					$t2->row($c, $regex, uc($m), $accepts, $returns, $is);
 				}
 			}
 		}
