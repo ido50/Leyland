@@ -12,7 +12,7 @@ sub find_options {
 	my @routes = $self->matching_routes($app_routes, @pref_routes);
 
 	# have we found any matching routes?
-	croak "404 Not Found" unless scalar @routes;
+	$c->exception({ code => 404 }) unless scalar @routes;
 
 	# okay, we have, let's see which HTTP methods are supported by
 	# these routes
