@@ -19,9 +19,20 @@ sub add_route {
 		}
 	}
 
-	$rules->{accepts} ||= 'text/html';
-	$rules->{returns} ||= 'text/html';
-	$rules->{is} ||= 'external';
+	$rules->{accepts} ||= ['text/html'];
+	$rules->{returns} ||= ['text/html'];
+	$rules->{is} ||= ['external'];
+	
+	# if this is a POST route, make sure it accepts application/x-www-form-urlencoded
+	my $xwfu;
+	foreach (@{$rules->{accepts}}) {
+		if ($_ eq 'application/x-www-form-urlencoded') {
+			$xwfu = 1;
+			last;
+		}
+	}
+	push(@{$rules->{accepts}}, 'application/x-www-form-urlencoded')
+		unless $xwfu;
 
 	my $routes = $class->has_routes ? $class->routes : Tie::IxHash->new;
 	

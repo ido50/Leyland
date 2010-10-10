@@ -52,6 +52,7 @@ sub BUILD {
 
 	unless ($self->has_error) {
 		$self->_set_error({
+			code => $self->code,
 			error => $self->name,
 			description => $self->description,
 		});
