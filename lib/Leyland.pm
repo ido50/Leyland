@@ -4,6 +4,7 @@ use Moose;
 use namespace::autoclean;
 use Leyland::Context;
 use Leyland::Negotiator;
+use Leyland::Logger;
 use JSON::Any;
 use XML::TreePP;
 use File::Util;
@@ -14,7 +15,7 @@ use Tie::IxHash;
 use Try::Tiny;
 use Text::SimpleTable;
 
-has 'config' => (is => 'ro', isa => 'HashRef', builder => '_init_config');
+has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
 
 has 'logger' => (is => 'ro', does => 'Leyland::Logger', writer => '_set_logger');
 
@@ -33,41 +34,17 @@ has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::
 has 'conneg' => (is => 'ro', isa => 'Leyland::Negotiator', default => sub { Leyland::Negotiator->new });
 
 has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_req_counter');
-
-sub _init_config {
-	my $self = shift;
-
-	my $config;
-
-	if (-e 'config.json' && $self->futil->can_read('config.json')) {
-		# we have a config file, let's load it
-		my $json = $self->futil->load_file('config.json');
-		$config = $self->json->from_json($json);
-	} else {
-		if (-e 'config.json') {
-			# we couldn't read the config file (permission problem?)
-			carp "Leyland can't read the config.json file, please check the file's permissions.";
-		}
-			
-		# let's create a default config
-		$config = $self->_default_config;
-	}
-
-	return $config;
-}
 	
 sub BUILD {
 	my $self = shift;
-	
-	my $config = $self->config;
 
-	$config->{env} ||= 'development';
+	$self->config->{env} = $ENV{PLACK_ENV};
 
-	# init logger, and if none are set, use Log::Handler
-	if (exists $config->{logger} && exists $config->{logger}->{class}) {
-		my $class = 'Leyland::Logger::'.$config->{logger}->{class};
+	 # init logger, and if none are set, use Log::Handler
+	if (exists $self->config->{logger} && exists $self->config->{logger}->{class}) {
+		my $class = 'Leyland::Logger::'.$self->config->{logger}->{class};
 		load $class;
-		my $logger = $class->init($config);
+		my $logger = $class->init($self->config);
 		$self->_set_logger($logger);
 	} else {
 		load Leyland::Logger::LogHandler;
@@ -76,18 +53,18 @@ sub BUILD {
 	}
 
 	# init localizer, if any
-	if (exists $config->{localizer} && exists $config->{localizer}->{class}) {
-		my $class = 'Leyland::Localizer::'.$config->{localizer}->{class}
-			unless $config->{localizer}->{class} =~ s/^\+//;
+	if (exists $self->config->{localizer} && exists $self->config->{localizer}->{class}) {
+		my $class = 'Leyland::Localizer::'.$self->config->{localizer}->{class}
+			unless $self->config->{localizer}->{class} =~ s/^\+//;
 		load $class;
-		my $localizer = $class->init($config);
+		my $localizer = $class->init($self->config);
 		$self->_set_localizer($localizer);
 	}
 
 	# init views, if any, start with view modules in the app
 	my @views = $self->_views || ();
 	# now load views defined in the config file
-	VIEW: foreach (@{$config->{views}}) {
+	VIEW: foreach (@{$self->config->{views}}) {
 		# have we already loaded this view in the first step?
 		foreach my $v ($self->_views) {
 			next VIEW if $v eq $_;
@@ -191,7 +168,7 @@ sub handle {
 
 	$c->res->body($ret);
 
-	print STDERR 'Response #'.$self->req_counter.': '.$c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0].' ('.$c->res->header('Content-Type').")\n";
+	$self->_log_response($c);
 
 	return $c->res->finalize;
 }
@@ -209,13 +186,32 @@ sub _log_request {
 
 	# increment the request counter
 	$self->_set_req_counter($self->req_counter + 1);
+	
+	my $ct = $c->res->header('Content-Type') || ' ';
 
-	# send log message detailing the request
-	$c->req->logger({ level => 'info', message => '-'x90 });
-	$c->req->logger({ level => 'info', message => join(', ', 'Request #'.$self->req_counter, $c->req->address, DateTime->now->ymd, DateTime->now->hms) });
-	my $msg = $c->req->method . ' ' . $c->req->path;
-	$msg .= ' (' . $c->req->header('Content-Type') . ')' if $c->req->header('Content-Type');
-	$c->req->logger({ level => 'info', message => $msg });
+	my $t = Text::SimpleTable->new([12, 'Request #'], [19, 'Method'], [25, 'Path'], [25, 'Content-Type']);
+	$t->row($self->req_counter, $c->req->address, $c->req->path, $ct);
+	
+	my @rows = split(/\n/, $t->draw);
+	
+	foreach (@rows) {
+		$self->log->info($_);
+	}
+}
+
+sub _log_response {
+	my ($self, $c) = @_;
+
+	my $cl = $c->res->header('Content-Length') || ' ';
+
+	my $t = Text::SimpleTable->new([12, 'Response #'], [19, 'Status'], [25, 'Content-Length'], [25, 'Content-Type']);
+	$t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], $cl, $c->res->header('Content-Type'));
+	
+	my @rows = split(/\n/, $t->draw);
+	
+	foreach (@rows) {
+		$self->log->info($_);
+	}
 }
 
 sub _invoke_route {
@@ -258,6 +254,7 @@ sub _handle_exception {
 				my $ret = $c->template($exp->mime($_->{mime}), $err, $exp->use_layout);
 				$c->res->content_type($_->{mime}.';charset=UTF-8');
 				$c->res->body($ret);
+				$self->_log_response($c);
 				return $c->res->finalize;
 			}
 		}
@@ -272,7 +269,7 @@ sub _handle_exception {
 			$c->res->content_type($_->{mime}.';charset=UTF-8');
 			$c->res->body($self->_deserialize($c, $err, $_->{mime}));
 			
-			print STDERR 'Response #'.$self->req_counter.': '.$c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0].' ('.$c->res->header('Content-Type').")\n";
+			$self->_log_response($c);
 
 			return $c->res->finalize;
 		} elsif ($_->{mime} eq 'text/html' || $_->{mime} eq 'text/plain') {
@@ -282,7 +279,7 @@ sub _handle_exception {
 			$c->res->content_type($_->{mime}.';charset=UTF-8');
 			$c->res->body($ret);
 			
-			print STDERR 'Response #'.$self->req_counter.': '.$c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0].' ('.$c->res->header('Content-Type').")\n";
+			$self->_log_response($c);
 			
 			return $c->res->finalize;
 		}
@@ -296,7 +293,7 @@ sub _handle_exception {
 	$c->res->content_type('text/plain;charset=UTF-8');
 	$c->res->body($ret);
 
-	print STDERR 'Response #'.$self->req_counter.': '.$c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0].' ('.$c->res->header('Content-Type').")\n";
+	$self->_log_response($c);
 
 	return $c->res->finalize;
 }
@@ -407,7 +404,11 @@ sub _initial_debug_info {
 		$t1->row('Localizer: '.$loc);
 	}
 
-	print STDERR $t1->draw, "Available routes:\n";
+	my @rows = split(/\n/, $t1->draw);
+	foreach (@rows) {
+		$self->log->info($_);
+	}
+	$self->log->info('Available routes:');
 
 	if ($self->has_routes) {
 		my $t2 = Text::SimpleTable->new([12, 'Prefix'], [20, 'Regex'], [7, 'Method'], [14, 'Accepts'], [14, 'Returns'], [8, 'Is']);
@@ -428,9 +429,12 @@ sub _initial_debug_info {
 			}
 		}
 
-		print STDERR $t2->draw;
+		my @rows = split(/\n/, $t2->draw);
+		foreach (@rows) {
+			$self->log->info($_);
+		}
 	} else {
-		print STDERR "-- No routes available ! --\n";
+		$self->log->info('-- No routes available ! --');
 	}
 }
 

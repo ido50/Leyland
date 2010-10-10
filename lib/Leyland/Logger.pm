@@ -10,12 +10,13 @@ requires 'init_logger';
 requires 'new_request_log';
 
 sub init {
-	my ($class, $config) = @_;
+my ($class, $config) = @_;
 
-	my $self = $class->new();
-	$self->_set_logger($self->init_logger($config));
+my $self = $class->new();
+$self->_set_logger($self->init_logger($config));
 
-	return $self;
+return $self;
 }
 
 1;
+
