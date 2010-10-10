@@ -277,7 +277,7 @@ sub _deserialize {
 	my $ct = $want.';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;
 	$c->res->content_type($ct);
 
-	if (ref $obj eq 'ARRAY' && scalar @$obj == 2 && ref $obj->[0] eq 'HASH') {
+	if (ref $obj eq 'ARRAY' && (scalar @$obj == 2 || scalar @$obj == 3) && ref $obj->[0] eq 'HASH') {
 		# render specified template
 		if ((exists $obj->[0]->{$want} && $obj->[0]->{$want} eq '') || !exists $obj->[0]->{$want}) {
 			# empty string for template name means deserialize
@@ -285,7 +285,8 @@ sub _deserialize {
 			# but has no template rule for it
 			return $c->structure($obj->[1], $want);
 		} else {
-			return $c->template($obj->[0]->{$want}, $obj->[1]);
+			my $use_layout = scalar @$obj == 3 && defined $obj->[2] ? $obj->[2] : 1;
+			return $c->template($obj->[0]->{$want}, $obj->[1], $use_layout);
 		}
 	} elsif (ref $obj eq 'ARRAY' || ref $obj eq 'HASH') {
 		# deserialize according to wanted type
