@@ -17,7 +17,7 @@ use Text::SimpleTable;
 
 has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
 
-has 'logger' => (is => 'ro', does => 'Leyland::Logger', writer => '_set_logger');
+has 'log' => (is => 'ro', isa => 'Object', default => sub { Leyland::Logger->new });
 
 has 'localizer' => (is => 'ro', does => 'Leyland::Localizer', predicate => 'has_localizer', writer => '_set_localizer');
 
@@ -39,18 +39,6 @@ sub BUILD {
 	my $self = shift;
 
 	$self->config->{env} = $ENV{PLACK_ENV};
-
-	 # init logger, and if none are set, use Log::Handler
-	if (exists $self->config->{logger} && exists $self->config->{logger}->{class}) {
-		my $class = 'Leyland::Logger::'.$self->config->{logger}->{class};
-		load $class;
-		my $logger = $class->init($self->config);
-		$self->_set_logger($logger);
-	} else {
-		load Leyland::Logger::LogHandler;
-		my $logger = Leyland::Logger::LogHandler->init();
-		$self->_set_logger($logger);
-	}
 
 	# init localizer, if any
 	if (exists $self->config->{localizer} && exists $self->config->{localizer}->{class}) {
@@ -99,9 +87,6 @@ sub handle {
 	my %params = ( leyland => $self, env => $env, config => $self->config, json => $self->json, xml => $self->xml );
 	$params{views} = $self->views if $self->has_views;
 	my $c = Leyland::Context->new(%params);
-
-	# give the context object a logger
-	$c->_set_log($self->logger->new_request_log($c->req));
 
 	# does the request path have an "unnecessary" trailing slash?
 	# if so, remove it and redirect to the new path
@@ -173,45 +158,9 @@ sub handle {
 	return $c->res->finalize;
 }
 
-sub log {
-	$_[0]->logger->logger;
-}
-
 sub setup {
 	# meant to be overriden
-}
-
-sub _log_request {
-	my ($self, $c) = @_;
-
-	# increment the request counter
-	$self->_set_req_counter($self->req_counter + 1);
-	
-	my $ct = $c->res->header('Content-Type') || ' ';
-
-	my $t = Text::SimpleTable->new([12, 'Request #'], [19, 'Method'], [25, 'Path'], [25, 'Content-Type']);
-	$t->row($self->req_counter, $c->req->address, $c->req->path, $ct);
-	
-	my @rows = split(/\n/, $t->draw);
-	
-	foreach (@rows) {
-		$self->log->info($_);
-	}
-}
-
-sub _log_response {
-	my ($self, $c) = @_;
-
-	my $cl = $c->res->header('Content-Length') || ' ';
-
-	my $t = Text::SimpleTable->new([12, 'Response #'], [19, 'Status'], [25, 'Content-Length'], [25, 'Content-Type']);
-	$t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], $cl, $c->res->header('Content-Type'));
-	
-	my @rows = split(/\n/, $t->draw);
-	
-	foreach (@rows) {
-		$self->log->info($_);
-	}
+	1;
 }
 
 sub _invoke_route {
@@ -361,19 +310,7 @@ sub _route_parents {
 
 sub _default_config {
 	{
-		environments => {
-			development => {
-				minlevel => 'notice',
-				maxlevel => 'debug',
-			},
-			production => {
-				minlevel => 'warning',
-				maxlevel => 'debug',
-			}
-		},
-		logger => {
-			class => 'LogShutton',
-		},
+		app => 'Leyland',
 		views => ['Tenjin'],
 	}
 }
@@ -388,15 +325,12 @@ sub _initial_debug_info {
 		push(@views, $view);
 	}
 
-	my $logger = ref $self->logger;
-	$logger =~ s/^Leyland::Logger:://;
-
 	my $t1 = Text::SimpleTable->new(90);
 	$t1->row($self->config->{app}. ' (powered by Leyland)');
 	$t1->hr;
 	$t1->row('Current environment: '.$self->config->{env});
 	$t1->row('Avilable views: '.join(', ', @views));
-	$t1->row('Logger: '.$logger);
+	$t1->row('Logger: '.ref($self->log));
 	
 	if ($self->has_localizer) {
 		my $loc = ref $self->localizer;
@@ -435,6 +369,39 @@ sub _initial_debug_info {
 		}
 	} else {
 		$self->log->info('-- No routes available ! --');
+	}
+}
+
+sub _log_request {
+	my ($self, $c) = @_;
+
+	# increment the request counter
+	$self->_set_req_counter($self->req_counter + 1);
+	
+	my $ct = $c->res->header('Content-Type') || ' ';
+
+	my $t = Text::SimpleTable->new([12, 'Request #'], [19, 'Method'], [25, 'Path'], [25, 'Content-Type']);
+	$t->row($self->req_counter, $c->req->address, $c->req->path, $ct);
+	
+	my @rows = split(/\n/, $t->draw);
+	
+	foreach (@rows) {
+		$c->log->info($_);
+	}
+}
+
+sub _log_response {
+	my ($self, $c) = @_;
+
+	my $cl = $c->res->header('Content-Length') || ' ';
+
+	my $t = Text::SimpleTable->new([12, 'Response #'], [19, 'Status'], [25, 'Content-Length'], [25, 'Content-Type']);
+	$t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], $cl, $c->res->header('Content-Type'));
+	
+	my @rows = split(/\n/, $t->draw);
+	
+	foreach (@rows) {
+		$c->log->info($_);
 	}
 }
 
