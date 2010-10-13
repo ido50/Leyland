@@ -150,12 +150,22 @@ sub forward {
 
 	croak "500 Internal Server Error" unless $path;
 
+	$self->log->info("Attempting to forward request to $path.");
+
 	my @routes = $self->leyland->conneg->find_routes($self, $self->leyland->routes, $path);
 
 	croak "500 Internal Server Error" unless scalar @routes;
 
+	my @pass = ($self->controller, $self);
+	push(@pass, @{$routes[0]->{route}->{captures}}) if scalar @{$routes[0]->{route}->{captures}};
+	push(@pass, @_) if scalar @_;
+
 	# just invoke the first matching route
-	return $routes[0]->{route}->{code}->($self, @{$routes[0]->{route}->{captures}}, @_);
+	return $routes[0]->{route}->{code}->(@pass);
+}
+
+sub localizer {
+	shift->leyland->localizer->localizer;
 }
 
 sub loc {

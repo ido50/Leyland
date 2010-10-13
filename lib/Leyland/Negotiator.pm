@@ -36,7 +36,10 @@ sub find_routes {
 	# find all routes matching the request path
 	my @routes = $self->matching_routes($app_routes, @pref_routes);
 
+	$c->log->info('Found '.scalar(@routes).' routes matching '.$path);
+
 	# weed out routes that do not match request method
+	$c->log->info('Negotiating request method.');
 	@routes = $self->negotiate_method($c->req->method, @routes);
 
 	# have we found anything? if not, return 404 error
@@ -44,12 +47,14 @@ sub find_routes {
 
 	# weed out all routes that do not accept the media type that the
 	# client used for the request
+	$c->log->info('Negotiating media type received.');
 	@routes = $self->negotiate_receive_media($c, @routes);
 
 	$c->exception({ code => 415 }) unless scalar @routes;
 
 	# weed out all routes that do not return any media type
 	# the client accepts
+	$c->log->info('Negotiating media type returned.');
 	@routes = $self->negotiate_return_media($c, @routes);
 
 	# do we have anything left? if not, return 406 error
@@ -95,6 +100,8 @@ sub matching_routes {
 		foreach my $r ($pref_routes->Keys) {
 			# does the requested route match the current route?
 			next unless my @captures = ($_->{route} =~ m/$r/);
+			
+			shift @captures if scalar @captures == 1 && $captures[0] == 1;
 
 			my $route_meths = $pref_routes->FETCH($r);
 

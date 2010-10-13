@@ -13,7 +13,7 @@ use Data::Dumper;
 use Module::Load;
 use Tie::IxHash;
 use Try::Tiny;
-use Text::SimpleTable;
+use Text::FlexiTable;
 
 has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
 
@@ -105,18 +105,22 @@ sub handle {
 
 	# is this an OPTIONS request?
 	if ($c->req->method eq 'OPTIONS') {
+		$c->log->info('Finding supported methods for requested path.');
 		my @options = $self->conneg->find_options($c, $self->routes);
 		$c->res->status(204); # 204 No Content
 		$c->res->header('Allow' => join(', ', @options));
 		return $c->res->finalize;
 	}
 
+
 	# Leyland only supports UTF-8 character encodings, so let's check
 	# the client supports that. If not, let's return an error
+	$c->log->info('Negotiating character set.');
 	$self->conneg->negotiate_charset($c);
 
 	# find matching routes (will issue an error if none found or none
 	# return client's acceptable media types)
+	$c->log->info('Searching matching routes.');
 	my @routes = try {
 		$self->conneg->find_routes($c, $self->routes);
 	} catch {
@@ -325,27 +329,35 @@ sub _initial_debug_info {
 		push(@views, $view);
 	}
 
-	my $t1 = Text::SimpleTable->new(90);
-	$t1->row($self->config->{app}. ' (powered by Leyland)');
-	$t1->hr;
-	$t1->row('Current environment: '.$self->config->{env});
-	$t1->row('Avilable views: '.join(', ', @views));
-	$t1->row('Logger: '.ref($self->log));
+	my $t1 = Text::FlexiTable->new(96);
+	$self->log->info($t1->hr('top'));
+	$self->log->info($t1->row($self->config->{app}. ' (powered by Leyland)'));
+	$self->log->info($t1->dhr);
+	$self->log->info($t1->row('Current environment: '.$self->config->{env}));
+	$self->log->info($t1->row('Avilable views: '.join(', ', @views)));
+	$self->log->info($t1->row('Logger: '.ref($self->log)));
 	
 	if ($self->has_localizer) {
 		my $loc = ref $self->localizer;
 		$loc =~ s/^Leyland::Localizer:://;
-		$t1->row('Localizer: '.$loc);
+		$self->log->info($t1->row('Localizer: '.$loc));
 	}
+	
+	$self->log->info($t1->hr('bottom'));
 
-	my @rows = split(/\n/, $t1->draw);
-	foreach (@rows) {
-		$self->log->info($_);
-	}
+	#my @rows = split(/\n/, $t1->draw);
+	#foreach (@rows) {
+	#	$self->log->info($_);
+	#}
+	
 	$self->log->info('Available routes:');
 
 	if ($self->has_routes) {
-		my $t2 = Text::SimpleTable->new([12, 'Prefix'], [20, 'Regex'], [7, 'Method'], [14, 'Accepts'], [14, 'Returns'], [8, 'Is']);
+		my $t2 = Text::FlexiTable->new(16, 24, 13, 18, 18, 12);
+		
+		$self->log->info($t2->hr('top'));
+		$self->log->info($t2->row('Prefix', 'Regex', 'Method', 'Accepts', 'Returns', 'Is'));
+		$self->log->info($t2->dhr);
 
 		foreach (sort { ($b eq '_root_') <=> ($a eq '_root_') || $a cmp $b } $self->routes->Keys) {
 			my $c = $_;
@@ -358,15 +370,18 @@ sub _initial_debug_info {
 					my $returns = ref $reg->{$m}->{rules}->{returns} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{returns}}) : $reg->{$m}->{rules}->{returns};
 					my $accepts = ref $reg->{$m}->{rules}->{accepts} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{accepts}}) : $reg->{$m}->{rules}->{accepts};
 					my $is = ref $reg->{$m}->{rules}->{is} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{is}}) : $reg->{$m}->{rules}->{is};
-					$t2->row($c, $regex, uc($m), $accepts, $returns, $is);
+					
+					$self->log->info($t2->row($c, $regex, uc($m), $accepts, $returns, $is));
 				}
 			}
 		}
+	
+		$self->log->info($t2->hr('bottom'));
 
-		my @rows = split(/\n/, $t2->draw);
-		foreach (@rows) {
-			$self->log->info($_);
-		}
+		#my @rows = split(/\n/, $t2->draw);
+		#foreach (@rows) {
+		#	$self->log->info($_);
+		#}
 	} else {
 		$self->log->info('-- No routes available ! --');
 	}
@@ -380,29 +395,35 @@ sub _log_request {
 	
 	my $ct = $c->res->header('Content-Type') || ' ';
 
-	my $t = Text::SimpleTable->new([12, 'Request #'], [19, 'Method'], [25, 'Path'], [25, 'Content-Type']);
-	$t->row($self->req_counter, $c->req->address, $c->req->path, $ct);
+	my $t = Text::FlexiTable->new(20, 20, 12, 20, 28);
+	$c->log->info($t->hr('top'));
+	$c->log->info($t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'));
+	$c->log->info($t->dhr);
+	$c->log->info($t->row($self->req_counter, $c->req->address, $c->req->method, $c->req->path, $ct));
+	$c->log->info($t->hr);
 	
-	my @rows = split(/\n/, $t->draw);
+	#my @rows = split(/\n/, $t->draw);
 	
-	foreach (@rows) {
-		$c->log->info($_);
-	}
+	#foreach (@rows) {
+	#	$c->log->info($_);
+	#}
 }
 
 sub _log_response {
 	my ($self, $c) = @_;
 
-	my $cl = $c->res->header('Content-Length') || ' ';
-
-	my $t = Text::SimpleTable->new([12, 'Response #'], [19, 'Status'], [25, 'Content-Length'], [25, 'Content-Type']);
-	$t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], $cl, $c->res->header('Content-Type'));
+	my $t = Text::FlexiTable->new(20, 20, 12, 20, 28);
+	$c->log->info($t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], [3, $c->res->header('Content-Type')]));
+	$c->log->info($t->dhr);
+	$c->log->info($t->row('Response #', 'Status', [3, 'Content-Type']));
+	$c->log->info($t->hr('bottom'));
+	$c->log->info('...');
 	
-	my @rows = split(/\n/, $t->draw);
+	#my @rows = split(/\n/, $t->draw);
 	
-	foreach (@rows) {
-		$c->log->info($_);
-	}
+	#foreach (@rows) {
+	#	$c->log->info($_);
+	#}
 }
 
 $Leyland::CODES = {
