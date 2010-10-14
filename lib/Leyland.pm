@@ -13,7 +13,7 @@ use Data::Dumper;
 use Module::Load;
 use Tie::IxHash;
 use Try::Tiny;
-use Text::FlexiTable;
+use Text::SpanningTable;
 
 has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
 
@@ -254,6 +254,7 @@ sub _deserialize {
 	my ($self, $c, $obj, $want) = @_;
 
 	my $ct = $want.';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;
+	$c->log->info($ct .' will be returned');
 	$c->res->content_type($ct);
 
 	if (ref $obj eq 'ARRAY' && (scalar @$obj == 2 || scalar @$obj == 3) && ref $obj->[0] eq 'HASH') {
@@ -334,7 +335,7 @@ sub _initial_debug_info {
 		push(@views, $view);
 	}
 
-	my $t1 = Text::FlexiTable->new(96);
+	my $t1 = Text::SpanningTable->new(96);
 	$t1->exec(\&_autolog, $self->log);
 
 	$t1->hr('top');
@@ -355,7 +356,7 @@ sub _initial_debug_info {
 	$self->log->info('Available routes:');
 
 	if ($self->has_routes) {
-		my $t2 = Text::FlexiTable->new(16, 24, 13, 18, 18, 12);
+		my $t2 = Text::SpanningTable->new(16, 24, 13, 18, 18, 12);
 		$t2->exec(\&_autolog, $self->log);
 		
 		$t2->hr('top');
@@ -395,14 +396,16 @@ sub _log_request {
 	
 	my $ct = $c->res->header('Content-Type') || ' ';
 
-	my $t = Text::FlexiTable->new(20, 20, 12, 20, 28);
+	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
 
 	$c->stash->{_tft} = $t;
 
 	$c->log->info($t->hr('top'));
 	$c->log->info($t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'));
 	$c->log->info($t->dhr);
-	$c->log->info($t->row($self->req_counter, $c->req->address, $c->req->method, $c->req->path, $ct));
+	foreach (split(/\n/, $t->row($self->req_counter, $c->req->address, $c->req->method, $c->req->path, $ct))) {
+		$c->log->info($_);
+	}
 	$c->log->info($t->hr);
 
 	$c->log->set_exec(sub { $_[0]->stash->{_tft}->row([5, $_[1]]) }, $c);
@@ -417,7 +420,9 @@ sub _log_response {
 	$c->log->clear_args();
 
 	$c->log->info($t->hr);
-	$c->log->info($t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], [3, $c->res->header('Content-Type')]));
+	foreach (split(/\n/, $t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], [3, $c->res->header('Content-Type')]))) {
+		$c->log->info($_);
+	}
 	$c->log->info($t->dhr);
 	$c->log->info($t->row('Response #', 'Status', [3, 'Content-Type']));
 	$c->log->info($t->hr('bottom'));

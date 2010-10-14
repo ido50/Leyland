@@ -141,7 +141,7 @@ sub negotiate_receive_media {
 		$ct = $1;
 	}
 
-	$c->log->debug("I have received $ct");
+	$c->log->info("I have received $ct");
 
 	ROUTE: foreach (@all_routes) {
 		# does this route accept all media types?
@@ -164,6 +164,12 @@ sub negotiate_receive_media {
 
 sub negotiate_return_media {
 	my ($self, $c, @all_routes) = @_;
+
+	my @mimes;
+	foreach (@{$c->wanted_mimes}) {
+		push(@mimes, $_->{mime});
+	}
+	$c->log->info('Remote address wants '.join(', ', @mimes));
 
 	# will hold all routes with acceptable return types
 	my @routes;
