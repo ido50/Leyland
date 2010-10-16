@@ -7,7 +7,7 @@ with 'Throwable';
 
 has 'code' => (is => 'ro', isa => 'Int', required => 1);
 
-has 'error' => (is => 'ro', predicate => 'has_error', writer => '_set_error');
+has 'error' => (is => 'ro', isa => 'Str', predicate => 'has_error', writer => '_set_error');
 
 has 'mimes' => (is => 'ro', isa => 'HashRef', predicate => 'has_mimes');
 
@@ -16,13 +16,7 @@ has 'use_layout' => (is => 'ro', isa => 'Bool', default => 1);
 sub BUILD {
 	my $self = shift;
 
-	unless ($self->has_error) {
-		$self->_set_error({
-			code => $self->code,
-			error => $self->name,
-			description => $self->description,
-		});
-	}
+	$self->_set_error($self->code . ' ' . $self->name) unless $self->has_error;
 }
 
 sub has_mime {
@@ -47,6 +41,16 @@ sub name {
 
 sub description {
 	$Leyland::CODES->{$_[0]->code}->[1] || 'Generic HTTP exception';
+}
+
+sub hash {
+	my $self = shift;
+
+	return {
+		error => $self->code . ' ' . $self->name,
+		message => $self->error,
+		description => $self->description,
+	};
 }
 
 __PACKAGE__->meta->make_immutable;

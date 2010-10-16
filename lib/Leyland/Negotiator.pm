@@ -101,7 +101,7 @@ sub matching_routes {
 			# does the requested route match the current route?
 			next unless my @captures = ($_->{route} =~ m/$r/);
 			
-			shift @captures if scalar @captures == 1 && $captures[0] == 1;
+			shift @captures if scalar @captures == 1 && $captures[0] eq '1';
 
 			my $route_meths = $pref_routes->FETCH($r);
 

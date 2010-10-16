@@ -202,10 +202,8 @@ sub _handle_exception {
 	if ($exp->has_mimes) {
 		foreach (@{$c->wanted_mimes}) {
 			if ($exp->has_mime($_->{mime})) {
-				my $err = !ref $exp->error || ref $exp->error eq 'SCALAR' ? { error => $exp->error } : $exp->error;
-				my $ret = $c->template($exp->mime($_->{mime}), $err, $exp->use_layout);
 				$c->res->content_type($_->{mime}.';charset=UTF-8');
-				$c->res->body($ret);
+				$c->res->body($c->template($exp->mime($_->{mime}), $exp->hash, $exp->use_layout));
 				$self->_log_response($c);
 				return $c->res->finalize;
 			}
@@ -217,36 +215,29 @@ sub _handle_exception {
 	# JSON or XML
 	foreach (@{$c->wanted_mimes}) {
 		if ($_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml') {
-			my $err = !ref $exp->error || ref $exp->error eq 'SCALAR' ? { error => $exp->error } : $exp->error;
 			$c->res->content_type($_->{mime}.';charset=UTF-8');
-			$c->res->body($self->_deserialize($c, $err, $_->{mime}));
-			
+			$c->res->body($self->_deserialize($c, $exp->hash, $_->{mime}));
 			$self->_log_response($c);
-
 			return $c->res->finalize;
 		} elsif ($_->{mime} eq 'text/html' || $_->{mime} eq 'text/plain') {
-			my $ret = !ref $exp->error || ref $exp->error eq 'SCALAR' ? $exp->error : Dumper($exp->error);
+			my $ret = Dumper($exp->hash);
 			$ret =~ s/^\$VAR1 = //;
 			$ret =~ s/;$//;
 			$c->res->content_type($_->{mime}.';charset=UTF-8');
 			$c->res->body($ret);
-			
 			$self->_log_response($c);
-			
 			return $c->res->finalize;
 		}
 	}
 
 	# We do not support none of the MIME types the client wants,
 	# let's return plain text
-	my $ret = !ref $exp->error || ref $exp->error eq 'SCALAR' ? $exp->error : Dumper($exp->error);
+	my $ret = Dumper($exp->error);
 	$ret =~ s/^\$VAR1 = //;
 	$ret =~ s/;$//;
 	$c->res->content_type('text/plain;charset=UTF-8');
 	$c->res->body($ret);
-
 	$self->_log_response($c);
-
 	return $c->res->finalize;
 }
 
