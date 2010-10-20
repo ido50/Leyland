@@ -173,6 +173,7 @@ sub loc {
 }
 
 sub exception {
+	$_[0]->log->debug("Exception thrown: $_[1]->{error}");
 	Leyland::Exception->throw($_[1]);
 }
 

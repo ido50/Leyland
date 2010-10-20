@@ -130,6 +130,7 @@ sub handle {
 	$c->_set_routes(\@routes);
 	
 	# invoke the first matching route
+	$c->log->info('Invoking first matching route.');
 	my $i = 0;
 	my $ret = try {
 		$self->_invoke_route($c, $i);
@@ -384,8 +385,6 @@ sub _log_request {
 
 	# increment the request counter
 	$self->_set_req_counter($self->req_counter + 1);
-	
-	my $ct = $c->res->header('Content-Type') || ' ';
 
 	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
 
@@ -394,7 +393,7 @@ sub _log_request {
 	$c->log->info($t->hr('top'));
 	$c->log->info($t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'));
 	$c->log->info($t->dhr);
-	foreach (split(/\n/, $t->row($self->req_counter, $c->req->address, $c->req->method, $c->req->path, $ct))) {
+	foreach (split(/\n/, $t->row($self->req_counter, $c->req->address, $c->req->method, $c->req->path, $c->req->header('Content-Type')))) {
 		$c->log->info($_);
 	}
 	$c->log->info($t->hr);
