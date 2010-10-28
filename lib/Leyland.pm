@@ -1,5 +1,7 @@
 package Leyland;
 
+$Leyland::VERSION = 0.1;
+
 use Moose;
 use namespace::autoclean;
 use Leyland::Context;
@@ -331,7 +333,7 @@ sub _initial_debug_info {
 	$t1->exec(\&_autolog, $self->log);
 
 	$t1->hr('top');
-	$t1->row($self->config->{app}. ' (powered by Leyland)');
+	$t1->row($self->config->{app}. ' v'.$self->config->{version}.' (powered by Leyland v'.$Leyland::VERSION.')');
 	$t1->dhr;
 	$t1->row('Current environment: '.$self->config->{env});
 	$t1->row('Avilable views: '.join(', ', @views));

@@ -16,9 +16,9 @@ sub init_localizer {
 		$loc->add_localizer(%$_);
 	}
 
-	my @langs = exists $config->{localizer}->{langs} ? @{$config->{localizer}->{langs}} : ();
+	my $langs = $config->{localizer}->{langs} || [];
 
-	$loc->set_languages(@langs);
+	$loc->set_languages(@$langs);
 
 	return $loc;
 }
