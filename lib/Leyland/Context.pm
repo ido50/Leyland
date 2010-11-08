@@ -190,7 +190,12 @@ sub uri_for {
 		s!^/!!;
 	}
 
-	my $uri = $self->req->base;
+	my $uri = '//' .
+		  ($self->env->{HTTP_HOST} || (($self->env->{SERVER_NAME} || '') .
+		  ':' .
+		  ($self->env->{SERVER_PORT} || 80))) .
+		  ($self->env->{SCRIPT_NAME} || '/');
+
 	$uri   .= join('/', @args) if scalar @args;
 	if ($params && ref $params eq 'HASH') {
 		$uri .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
