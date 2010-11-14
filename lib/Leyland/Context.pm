@@ -174,7 +174,7 @@ sub loc {
 
 sub exception {
 	my $err = $_[1]->{error} || $Leyland::CODES->{$_[1]->{code}}->[0];
-	$_[0]->log->debug("Throwing exception $_[1]->{code}, message: $err");
+	$_[0]->log->debug("Exception thrown: $_[1]->{code}, message: $err");
 	Leyland::Exception->throw($_[1]);
 }
 
@@ -191,7 +191,12 @@ sub uri_for {
 		s!^/!!;
 	}
 
-	my $uri = $self->req->base;
+	my $uri = '//' .
+		  ($self->env->{HTTP_HOST} || (($self->env->{SERVER_NAME} || '') .
+		  ':' .
+		  ($self->env->{SERVER_PORT} || 80))) .
+		  ($self->env->{SCRIPT_NAME} || '/');
+
 	$uri   .= join('/', @args) if scalar @args;
 	if ($params && ref $params eq 'HASH') {
 		$uri .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
