@@ -148,20 +148,20 @@ sub _build_mimes {
 sub forward {
 	my ($self, $path) = (shift, shift);
 
-	croak "500 Internal Server Error" unless $path;
+	$self->exception({ code => 500 }) unless $path;
 
 	$self->log->info("Attempting to forward request to $path.");
 
-	my @routes = $self->leyland->conneg->find_routes($self, $self->leyland->routes, $path);
+	my @routes = $self->leyland->conneg->just_routes($self, $self->leyland->routes, $path);
 
-	croak "500 Internal Server Error" unless scalar @routes;
+	$self->exception({ code => 500 }) unless scalar @routes;
 
 	my @pass = ($self->controller, $self);
-	push(@pass, @{$routes[0]->{route}->{captures}}) if scalar @{$routes[0]->{route}->{captures}};
+	push(@pass, @{$routes[0]->{captures}}) if scalar @{$routes[0]->{captures}};
 	push(@pass, @_) if scalar @_;
 
 	# just invoke the first matching route
-	return $routes[0]->{route}->{code}->(@pass);
+	return $routes[0]->{code}->(@pass);
 }
 
 sub localizer {
@@ -173,6 +173,8 @@ sub loc {
 }
 
 sub exception {
+	my $err = $_[1]->{error} || $Leyland::CODES->{$_[1]->{code}}->[0];
+	$_[0]->log->debug("Throwing exception $_[1]->{code}, message: $err");
 	Leyland::Exception->throw($_[1]);
 }
 

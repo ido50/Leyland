@@ -24,7 +24,7 @@ sub find_options {
 	return sort keys %meths;
 }
 
-sub find_routes {
+sub just_routes {
 	my ($self, $c, $app_routes, $path) = @_;
 
 	$path ||= $c->req->path;
@@ -34,7 +34,18 @@ sub find_routes {
 	my @pref_routes = $self->prefs_and_routes($path);
 
 	# find all routes matching the request path
-	my @routes = $self->matching_routes($app_routes, @pref_routes);
+	return $self->matching_routes($app_routes, @pref_routes);
+}
+
+sub find_routes {
+	my ($self, $c, $app_routes, $path) = @_;
+
+	$path ||= $c->req->path;
+
+	# let's find all possible prefix/route combinations
+	# from the request path, and then find all routes matching
+	# the request path
+	my @routes = $self->just_routes($c, $app_routes, $path);
 
 	$c->log->info('Found '.scalar(@routes).' routes matching '.$path);
 
@@ -190,7 +201,8 @@ sub negotiate_return_media {
 				# accepts a type we support, it will have
 				# preference over this
 				if ($want->{mime} eq '*/*' && $want->{q} > 0) {
-					push(@routes, { media => $have[0], route => $_ });
+					$_->{media} = $have[0];
+					push(@routes, $_);
 					next ROUTE;
 				}
 				
@@ -198,13 +210,15 @@ sub negotiate_return_media {
 				foreach my $have (@have) {
 					if ($want->{mime} eq $have) {
 						# we return a MIME type the client wants
-						push(@routes, { media => $want->{mime}, route => $_ });
+						$_->{media} = $want->{mime};
+						push(@routes, $_);
 						next ROUTE;
 					}
 				}
 			}
 		} else {
-			push(@routes, { media => $have[0], route => $_ });
+			$_->{media} = $have[0];
+			push(@routes, $_);
 			next ROUTE;
 		}
 	}

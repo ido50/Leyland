@@ -169,21 +169,21 @@ sub setup {
 sub _invoke_route {
 	my ($self, $c, $i) = @_;
 
-	$c->_set_controller($c->routes->[$i]->{route}->{class});
+	$c->_set_controller($c->routes->[$i]->{class});
 	
 	# but first invoke all 'auto' subs up to the matching route's controller
-	foreach ($self->_route_parents($c->routes->[$i]->{route}->{prefix})) {
-		$_->auto($c, @{$c->routes->[$i]->{route}->{captures}});
+	foreach ($self->_route_parents($c->routes->[$i]->{prefix})) {
+		$_->auto($c, @{$c->routes->[$i]->{captures}});
 	}
 
 	# then invoke the pre_route subroutine
-	$c->controller->pre_route($c, @{$c->routes->[$i]->{route}->{captures}});
+	$c->controller->pre_route($c, @{$c->routes->[$i]->{captures}});
 
 	# invoke the route itself
-	my $ret = $self->_deserialize($c, $c->routes->[$i]->{route}->{code}->($c->controller, $c, @{$c->routes->[$i]->{route}->{captures}}), $c->routes->[$i]->{media});
+	my $ret = $self->_deserialize($c, $c->routes->[$i]->{code}->($c->controller, $c, @{$c->routes->[$i]->{captures}}), $c->routes->[$i]->{media});
 
 	# invoke the post_route subroutine
-	$c->controller->post_route($c, @{$c->routes->[$i]->{route}->{captures}});
+	$c->controller->post_route($c, @{$c->routes->[$i]->{captures}});
 
 	return $ret;
 }
