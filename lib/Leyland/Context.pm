@@ -178,6 +178,16 @@ sub exception {
 	Leyland::Exception->throw($_[1]);
 }
 
+sub uri_base {
+	my ($self, @args) = @_;
+
+	return '//' .
+		  ($self->env->{HTTP_HOST} || (($self->env->{SERVER_NAME} || '') .
+		  ':' .
+		  ($self->env->{SERVER_PORT} || 80))) .
+		  ($self->env->{SCRIPT_NAME} || '/');
+}	
+
 sub uri_for {
 	my ($self, @args) = @_;
 
@@ -191,13 +201,8 @@ sub uri_for {
 		s!^/!!;
 	}
 
-	my $uri = '//' .
-		  ($self->env->{HTTP_HOST} || (($self->env->{SERVER_NAME} || '') .
-		  ':' .
-		  ($self->env->{SERVER_PORT} || 80))) .
-		  ($self->env->{SCRIPT_NAME} || '/');
-
-	$uri   .= join('/', @args) if scalar @args;
+	my $uri = $self->uri_base;
+	$uri .= join('/', @args) if scalar @args;
 	if ($params && ref $params eq 'HASH') {
 		$uri .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
 	}
