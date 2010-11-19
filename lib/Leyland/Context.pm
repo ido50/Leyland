@@ -28,6 +28,8 @@ has 'log' => (is => 'ro', isa => 'Leyland::Logger', lazy_build => 1);
 
 has 'wanted_mimes' => (is => 'ro', isa => 'ArrayRef[HashRef]', builder => '_build_mimes');
 
+has 'want' => (is => 'ro', isa => 'Str', writer => '_set_want');
+
 has 'current_route' => (is => 'rw', isa => 'Int', default => 0);
 
 has 'pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_pass');
@@ -191,11 +193,7 @@ sub uri_base {
 sub path_to {
 	my ($self, @args) = @_;
 
-	my $params = pop @args if scalar @args;
-	if ($params && ref $params ne 'HASH') {
-		push(@args, $params);
-		undef $params;
-	}
+	my $params = pop @args if scalar @args && ref $args[$#args] eq 'HASH';
 	
 	foreach (@args) {
 		s!^/!!;
@@ -207,13 +205,16 @@ sub path_to {
 		$path .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
 	}
 
-	return $path;
+	return '/'.$path;
 }
 
 sub uri_for {
 	my $self = shift;
 
-	return URI->new($self->uri_base.$self->path_to(@_));
+	my $path = $self->path_to(@_);
+	$path =~ s!^/!!;
+
+	return URI->new($self->uri_base.$path);
 }
 
 __PACKAGE__->meta->make_immutable;
