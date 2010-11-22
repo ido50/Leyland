@@ -4,7 +4,6 @@ $Leyland::VERSION = 0.1;
 
 use Moose;
 use namespace::autoclean;
-use Leyland::Context;
 use Leyland::Negotiator;
 use Leyland::Logger;
 use JSON::Any;
@@ -36,11 +35,16 @@ has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::
 has 'conneg' => (is => 'ro', isa => 'Leyland::Negotiator', default => sub { Leyland::Negotiator->new });
 
 has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_req_counter');
+
+has 'context_class' => (is => 'ro', isa => 'Str', default => 'Leyland::Context');
 	
 sub BUILD {
 	my $self = shift;
 
 	$self->config->{env} = $ENV{PLACK_ENV};
+
+	# load the context class
+	load $self->context_class;
 
 	# init localizer, if any
 	if (exists $self->config->{localizer} && exists $self->config->{localizer}->{class}) {
@@ -88,7 +92,7 @@ sub handle {
 	# create the context object
 	my %params = ( leyland => $self, env => $env, config => $self->config, json => $self->json, xml => $self->xml );
 	$params{views} = $self->views if $self->has_views;
-	my $c = Leyland::Context->new(%params);
+	my $c = $self->context_class->new(%params);
 
 	# does the request path have an "unnecessary" trailing slash?
 	# if so, remove it and redirect to the new path

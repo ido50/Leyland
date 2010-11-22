@@ -179,16 +179,16 @@ sub exception {
 }
 
 sub uri_base {
-	my ($self, @args) = @_;
+	my $self = shift;
 
 	return '//' .
 		  ($self->env->{HTTP_HOST} || (($self->env->{SERVER_NAME} || '') .
 		  ':' .
 		  ($self->env->{SERVER_PORT} || 80))) .
 		  ($self->env->{SCRIPT_NAME} || '/');
-}	
+}
 
-sub uri_for {
+sub path_to {
 	my ($self, @args) = @_;
 
 	my $params = pop @args if scalar @args;
@@ -201,13 +201,19 @@ sub uri_for {
 		s!^/!!;
 	}
 
-	my $uri = $self->uri_base;
-	$uri .= join('/', @args) if scalar @args;
+	my $path = '';
+	$path .= join('/', @args) if scalar @args;
 	if ($params && ref $params eq 'HASH') {
-		$uri .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
+		$path .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
 	}
 
-	return URI->new($uri);
+	return $path;
+}
+
+sub uri_for {
+	my $self = shift;
+
+	return URI->new($self->uri_base.$self->path_to(@_));
 }
 
 __PACKAGE__->meta->make_immutable;
