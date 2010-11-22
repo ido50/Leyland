@@ -187,6 +187,7 @@ sub _invoke_route {
 	$c->controller->pre_route($c, @{$c->routes->[$i]->{captures}});
 
 	# invoke the route itself
+	$c->_set_want($c->routes->[$i]->{media});
 	my $ret = $self->_deserialize($c, $c->routes->[$i]->{code}->($c->controller, $c, @{$c->routes->[$i]->{captures}}), $c->routes->[$i]->{media});
 
 	# invoke the post_route subroutine
