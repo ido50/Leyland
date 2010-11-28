@@ -217,4 +217,8 @@ sub uri_for {
 	return URI->new($self->uri_base.$path);
 }
 
+sub pre_exception {
+	1;
+}
+
 __PACKAGE__->meta->make_immutable;

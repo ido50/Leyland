@@ -75,7 +75,17 @@ sub BUILD {
 	my $routes = Tie::IxHash->new;
 	foreach ($self->controllers) {
 		my $prefix = $_->prefix || '_root_';
-		$routes->Push($prefix => $_->routes);
+		
+		# in order to allow multiple controllers having the same
+		# prefix, let's see if we've already encountered this prefix,
+		# and if so, merge the routes
+		if ($routes->EXISTS($prefix)) {
+			foreach my $r ($_->routes->Keys) {
+				$routes->FETCH($prefix)->Push($r => $_->routes->FETCH($r));
+			}
+		} else {
+			$routes->Push($prefix => $_->routes);
+		}
 	}
 	$self->_set_routes($routes);
 
