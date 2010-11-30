@@ -81,7 +81,13 @@ sub BUILD {
 		# and if so, merge the routes
 		if ($routes->EXISTS($prefix)) {
 			foreach my $r ($_->routes->Keys) {
-				$routes->FETCH($prefix)->Push($r => $_->routes->FETCH($r));
+				foreach my $m (keys %{$_->routes->FETCH($r)}) {
+					if ($routes->FETCH($prefix)->EXISTS($r)) {
+						$routes->FETCH($prefix)->FETCH($r)->{$m} = $_->routes->FETCH($r)->{$m};
+					} else {
+						$routes->FETCH($prefix)->Push($r => { $m => $_->routes->FETCH($r)->{$m} });
+					}
+				}
 			}
 		} else {
 			$routes->Push($prefix => $_->routes);
