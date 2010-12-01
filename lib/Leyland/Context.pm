@@ -40,7 +40,7 @@ has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
 
 has 'session' => (is => 'ro', isa => 'HashRef', lazy_build => 1);
 
-has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user');
+has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user', clearer => 'clear_user');
 
 has 'json' => (is => 'ro', isa => 'Object', required => 1); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
 
@@ -215,6 +215,10 @@ sub uri_for {
 	$path =~ s!^/!!;
 
 	return URI->new($self->uri_base.$path);
+}
+
+sub pre_exception {
+	1;
 }
 
 __PACKAGE__->meta->make_immutable;
