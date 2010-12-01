@@ -191,7 +191,7 @@ sub _invoke_route {
 	my $ret = $self->_deserialize($c, $c->routes->[$i]->{code}->($c->controller, $c, @{$c->routes->[$i]->{captures}}), $c->routes->[$i]->{media});
 
 	# invoke the post_route subroutine
-	$c->controller->post_route($c, @{$c->routes->[$i]->{captures}});
+	$c->controller->post_route($c, \$ret);
 
 	return $ret;
 }
