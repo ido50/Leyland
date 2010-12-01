@@ -180,16 +180,6 @@ sub exception {
 	Leyland::Exception->throw($_[1]);
 }
 
-sub uri_base {
-	my $self = shift;
-
-	return '//' .
-		  ($self->env->{HTTP_HOST} || (($self->env->{SERVER_NAME} || '') .
-		  ':' .
-		  ($self->env->{SERVER_PORT} || 80))) .
-		  ($self->env->{SCRIPT_NAME} || '/');
-}
-
 sub path_to {
 	my ($self, @args) = @_;
 
@@ -208,13 +198,17 @@ sub path_to {
 	return '/'.$path;
 }
 
+sub uri_base {
+	shift->req->base;
+}
+
 sub uri_for {
 	my $self = shift;
 
 	my $path = $self->path_to(@_);
 	$path =~ s!^/!!;
 
-	return URI->new($self->uri_base.$path);
+	return URI->new($self->req->base.$path);
 }
 
 sub pre_exception {
