@@ -6,6 +6,7 @@ use Moose;
 use namespace::autoclean;
 use Leyland::Negotiator;
 use Leyland::Logger;
+use Leyland::Localizer;
 use JSON::Any;
 use XML::TreePP;
 use File::Util;
@@ -20,7 +21,7 @@ has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_de
 
 has 'log' => (is => 'ro', isa => 'Object', default => sub { Leyland::Logger->new });
 
-has 'localizer' => (is => 'ro', does => 'Leyland::Localizer', predicate => 'has_localizer', writer => '_set_localizer');
+has 'localizer' => (is => 'ro', isa => 'Leyland::Localizer', predicate => 'has_localizer', writer => '_set_localizer');
 
 has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
 
@@ -46,13 +47,9 @@ sub BUILD {
 	# load the context class
 	load $self->context_class;
 
-	# init localizer, if any
-	if (exists $self->config->{localizer} && exists $self->config->{localizer}->{class}) {
-		my $class = 'Leyland::Localizer::'.$self->config->{localizer}->{class}
-			unless $self->config->{localizer}->{class} =~ s/^\+//;
-		load $class;
-		my $localizer = $class->init($self->config);
-		$self->_set_localizer($localizer);
+	# init localizer, if localization path given
+	if (exists $self->config->{locales}) {
+		$self->_set_localizer(Leyland::Localizer->new(path => $self->config->{locales}));
 	}
 
 	# init views, if any, start with view modules in the app
@@ -359,12 +356,6 @@ sub _initial_debug_info {
 	$t1->row('Current environment: '.$self->config->{env});
 	$t1->row('Avilable views: '.join(', ', @views));
 	$t1->row('Logger: '.ref($self->log));
-	
-	if ($self->has_localizer) {
-		my $loc = ref $self->localizer;
-		$loc =~ s/^Leyland::Localizer:://;
-		$t1->row('Localizer: '.$loc);
-	}
 	
 	$t1->hr('bottom');
 	

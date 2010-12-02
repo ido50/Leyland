@@ -30,6 +30,8 @@ has 'wanted_mimes' => (is => 'ro', isa => 'ArrayRef[HashRef]', builder => '_buil
 
 has 'want' => (is => 'ro', isa => 'Str', writer => '_set_want');
 
+has 'lang' => (is => 'ro', isa => 'Str', writer => 'set_lang');
+
 has 'current_route' => (is => 'rw', isa => 'Int', default => 0);
 
 has 'pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_pass');
@@ -166,12 +168,10 @@ sub forward {
 	return $routes[0]->{code}->(@pass);
 }
 
-sub localizer {
-	shift->leyland->localizer->localizer;
-}
-
 sub loc {
-	shift->leyland->localizer->loc(@_);
+	my ($self, $msg, @args) = @_;
+
+	return $self->leyland->localizer->loc($msg, $self->lang, @args);
 }
 
 sub exception {

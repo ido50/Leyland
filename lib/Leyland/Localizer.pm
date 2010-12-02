@@ -1,21 +1,19 @@
 package Leyland::Localizer;
 
-use Moose::Role;
+use Moose;
 use namespace::autoclean;
+use Wolowitz;
 
-has 'localizer' => (is => 'ro', isa => 'Object', writer => '_set_localizer');
+has 'path' => (is => 'ro', isa => 'Str', required => 1);
 
-requires 'init_localizer';
+has 'w' => (is => 'ro', isa => 'Wolowitz', writer => '_set_w');
 
-requires 'loc';
-
-sub init {
-	my ($class, $config) = @_;
-
-	my $self = $class->new();
-	$self->_set_localizer($self->init_localizer($config));
-
-	return $self;
+sub BUILD {
+	$_[0]->_set_w(Wolowitz->new($_[0]->path));
 }
 
-1;
+sub loc {
+	shift->w->loc(@_);
+}
+
+__PACKAGE__->meta->make_immutable;
