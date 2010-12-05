@@ -198,10 +198,6 @@ sub path_to {
 	return '/'.$path;
 }
 
-sub uri_base {
-	shift->req->base;
-}
-
 sub uri_for {
 	my $self = shift;
 

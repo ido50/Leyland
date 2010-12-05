@@ -265,9 +265,13 @@ sub _handle_exception {
 sub _deserialize {
 	my ($self, $c, $obj, $want) = @_;
 
-	my $ct = $want.';charset=UTF-8' if $want =~ m/text|json|xml|html|atom/;
-	$c->log->info($ct .' will be returned');
-	$c->res->content_type($ct);
+	my $ct = $c->res->content_type;
+	unless ($ct) {
+		$ct = $want.';charset=UTF-8' if $want && $want =~ m/text|json|xml|html|atom/;
+		$ct ||= 'text/plain;charset=UTF-8';
+		$c->log->info($ct .' will be returned');
+		$c->res->content_type($ct);
+	}
 
 	if (ref $obj eq 'ARRAY' && (scalar @$obj == 2 || scalar @$obj == 3) && ref $obj->[0] eq 'HASH') {
 		# render specified template
