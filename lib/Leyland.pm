@@ -231,8 +231,9 @@ sub _handle_exception {
 	my ($self, $c, $exp) = @_;
 	
 	$c->_set_died(1);
-	
-	croak $_ unless ref $_ && $_->isa('Leyland::Exception');
+
+	# have we caught a Leyland::Exception object?
+	croak $exp unless ref $exp && $exp->isa('Leyland::Exception');
 
 	$c->res->status($exp->code);
 
