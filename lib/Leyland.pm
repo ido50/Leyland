@@ -1,5 +1,7 @@
 package Leyland;
 
+# ABSTRACT: A Plack-based application framework that makes no sense
+
 $Leyland::VERSION = 0.1;
 
 use Moose;
@@ -16,6 +18,22 @@ use Module::Load;
 use Tie::IxHash;
 use Try::Tiny;
 use Text::SpanningTable;
+
+=head1 NAME
+
+Leyland - A Plack-based application framework that makes no sense
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 CLASS METHODS
+
+=head1 OBJECT ATTRIBUTES
+
+=head1 OBJECT METHODS
+
+=cut
 
 has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
 
@@ -38,11 +56,11 @@ has 'conneg' => (is => 'ro', isa => 'Leyland::Negotiator', default => sub { Leyl
 has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_req_counter');
 
 has 'context_class' => (is => 'ro', isa => 'Str', default => 'Leyland::Context');
+
+has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
 	
 sub BUILD {
 	my $self = shift;
-
-	$self->config->{env} = $ENV{PLACK_ENV};
 
 	# load the context class
 	load $self->context_class;
@@ -357,7 +375,7 @@ sub _initial_debug_info {
 	$t1->hr('top');
 	$t1->row($self->config->{app}. ' v'.$self->config->{version}.' (powered by Leyland v'.$Leyland::VERSION.')');
 	$t1->dhr;
-	$t1->row('Current environment: '.$self->config->{env});
+	$t1->row('Current working environment: '.$self->cwe);
 	$t1->row('Avilable views: '.join(', ', @views));
 	$t1->row('Logger: '.ref($self->log));
 	
@@ -470,19 +488,6 @@ $Leyland::CODES = {
 	501 => ['Not Implemented', 'The server either does not recognise the request method, or it lacks the ability to fulfill the request.'],
 	503 => ['Service Unavailable', 'The server is currently unavailable (because it is overloaded or down for maintenance).'],
 };
-
-=head1 NAME
-
-Leyland - The great new Leyland!
-
-=head1 SYNOPSIS
-
-	use Leyland;
-
-	my $foo = Leyland->new();
-	...
-
-=head1 METHODS
 
 =head1 AUTHOR
 
