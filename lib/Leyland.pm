@@ -233,7 +233,13 @@ sub _handle_exception {
 	$c->_set_died(1);
 
 	# have we caught a Leyland::Exception object?
-	croak $exp unless ref $exp && $exp->isa('Leyland::Exception');
+	unless (ref $exp && $exp->isa('Leyland::Exception')) {
+		my $err = ref $exp ? Dumper($exp) : $exp;
+		$exp = Leyland::Exception->new(code => 500, error => $err);
+	}
+
+	my $err = $exp->error || $Leyland::CODES->{$exp->code}->[0];
+	$c->log->debug("Exception thrown: ".$exp->code.", message: $err");
 
 	$c->res->status($exp->code);
 

@@ -195,8 +195,6 @@ sub loc {
 }
 
 sub exception {
-	my $err = $_[1]->{error} || $Leyland::CODES->{$_[1]->{code}}->[0];
-	$_[0]->log->debug("Exception thrown: $_[1]->{code}, message: $err");
 	Leyland::Exception->throw($_[1]);
 }
 
