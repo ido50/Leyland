@@ -11,12 +11,12 @@ use Leyland::Localizer;
 use JSON::Any;
 use XML::TreePP;
 use File::Util;
-use Carp;
 use Data::Dumper;
 use Module::Load;
 use Tie::IxHash;
 use Try::Tiny;
 use Text::SpanningTable;
+use Carp;
 
 =head1 NAME
 
@@ -67,6 +67,23 @@ sub BUILD {
 	# init logger
 	if (exists $self->config->{logger}) {
 		# load this logger
+		if (ref $self->config->{logger} eq 'HASH') {
+			my $class = $self->config->{logger}->{class}
+				|| croak "You must provide the name of the logger class to use.";
+			$class = 'Leyland::Logger::'.$class;
+
+			# load the logger class
+			load $class;
+			my $log = $class->new;
+			
+			# initialize the class
+			$log->init($self->config->{logger}->{opts});
+			$self->_set_log($log);
+		} else {
+			my $class = 'Leyland::Logger::'.$self->config->{logger};
+			load $class;
+			$self->_set_log($class->new);
+		}
 	} else {
 		# load the base logger
 		load Leyland::Logger::STDERR;
@@ -80,7 +97,7 @@ sub BUILD {
 
 	# require Module::Pluggable and load all views and controllers
 	# with it
-	require Module::Pluggable;
+	load Module::Pluggable;
 	Module::Pluggable->import(search_path => [$self->config->{app}.'::View'], sub_name => '_views', require => 1);
 	Module::Pluggable->import(search_path => [$self->config->{app}.'::Controller'], sub_name => 'controllers', require => 1);
 
@@ -135,7 +152,7 @@ sub handle {
 	my ($self, $env) = @_;
 
 	# create the context object
-	my %params = ( leyland => $self, env => $env, config => $self->config, json => $self->json, xml => $self->xml );
+	my %params = ( leyland => $self, env => $env );
 	$params{views} = $self->views if $self->has_views;
 	my $c = $self->context_class->new(%params);
 

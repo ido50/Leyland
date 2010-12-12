@@ -44,8 +44,6 @@ has 'res' => (is => 'ro', isa => 'Plack::Response', default => sub { Plack::Resp
 
 has 'routes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_routes', writer => '_set_routes');
 
-has 'log' => (is => 'ro', isa => 'Leyland::Logger', lazy_build => 1);
-
 has 'wanted_mimes' => (is => 'ro', isa => 'ArrayRef[HashRef]', builder => '_build_mimes');
 
 has 'want' => (is => 'ro', isa => 'Str', writer => '_set_want');
@@ -64,10 +62,6 @@ has 'session' => (is => 'ro', isa => 'HashRef', lazy_build => 1);
 
 has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user', clearer => 'clear_user');
 
-has 'json' => (is => 'ro', isa => 'Object', required => 1); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
-
-has 'xml' => (is => 'ro', isa => 'XML::TreePP', required => 1);
-
 has 'died' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_died');
 
 sub _build_req {
@@ -78,8 +72,16 @@ sub _build_session {
 	exists $_[0]->env->{'psgix.session'} ? $_[0]->env->{'psgix.session'} : {};
 }
 
-sub _build_log {
-	$_[0]->req->logger ? Leyland::Logger->new(logger => $_[0]->req->logger) : Leyland::Logger->new;
+sub log {
+	shift->leyland->log;
+}
+
+sub xml {
+	shift->leyland->xml;
+}
+
+sub json {
+	shift->leyland->json;
 }
 
 sub pass {

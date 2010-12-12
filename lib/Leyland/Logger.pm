@@ -21,7 +21,9 @@ Leyland::Logger - Logging facilities for Leyland applications
 
 =cut
 
-has 'logger' => (is => 'ro', isa => 'CodeRef', default => sub { \&_default_logger });
+requires 'init';
+
+requires 'log';
 
 has 'exec' => (is => 'ro', isa => 'CodeRef', writer => '_set_exec', predicate => 'has_exec', clearer => 'clear_exec');
 
@@ -36,7 +38,7 @@ Generates a debug message.
 =cut
 
 sub debug {
-	$_[0]->logger->({ level => 'debug', message => $_[1] });
+	$_[0]->log({ level => 'debug', message => $_[1] });
 }
 
 =head2 info( $msg )
@@ -46,7 +48,7 @@ Generates an info message.
 =cut
 
 sub info {
-	$_[0]->logger->({ level => 'info', message => $_[1] });
+	$_[0]->log({ level => 'info', message => $_[1] });
 }
 
 =head2 warn( $msg )
@@ -56,7 +58,7 @@ Generates a warning message.
 =cut
 
 sub warn {
-	$_[0]->logger->({ level => 'warn', message => $_[1] });
+	$_[0]->log({ level => 'warn', message => $_[1] });
 }
 
 =head2 error( $msg )
@@ -66,21 +68,7 @@ Generates an error message.
 =cut
 
 sub error {
-	$_[0]->logger->({ level => 'error', message => $_[1] });
-}
-
-sub _default_logger {
-	my @lt = localtime;
-	$lt[5] += 1900; # fix year
-
-	foreach (0 .. 4) {
-		$lt[$_] = '0'.$lt[$_] if $lt[$_] < 10;
-	}
-
-	my $ymd = join('-', $lt[5], $lt[4], $lt[3]);
-	my $hms = join(':', $lt[2], $lt[1], $lt[0]);
-
-	print STDERR $ymd, ' ', $hms, ' [', uc($_[0]->{level}), '] ', $_[0]->{message}, "\n";
+	$_[0]->log({ level => 'error', message => $_[1] });
 }
 
 sub set_exec {
@@ -90,7 +78,7 @@ sub set_exec {
 	$self->_set_args(\@_) if scalar @_;
 }
 
-around qr/^(debug|info|warn|error)$/ => sub {
+around [qw/debug info warn error/] => sub {
 	my ($orig, $self, $msg) = @_;
 
 	if ($self->has_exec) {
