@@ -2,7 +2,7 @@ package Leyland::Logger;
 
 # ABSTARCT: Logging facilities for Leyland applications
 
-use Moose;
+use Moose::Role;
 use namespace::autoclean;
 
 =head1 NAME
@@ -153,4 +153,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;

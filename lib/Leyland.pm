@@ -7,7 +7,6 @@ $Leyland::VERSION = 0.1;
 use Moose;
 use namespace::autoclean;
 use Leyland::Negotiator;
-use Leyland::Logger;
 use Leyland::Localizer;
 use JSON::Any;
 use XML::TreePP;
@@ -37,7 +36,7 @@ Leyland - A Plack-based application framework that makes no sense
 
 has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
 
-has 'log' => (is => 'ro', isa => 'Object', default => sub { Leyland::Logger->new });
+has 'log' => (is => 'ro', does => 'Leyland::Logger', writer => '_set_log');
 
 has 'localizer' => (is => 'ro', isa => 'Leyland::Localizer', predicate => 'has_localizer', writer => '_set_localizer');
 
@@ -64,6 +63,15 @@ sub BUILD {
 
 	# load the context class
 	load $self->context_class;
+
+	# init logger
+	if (exists $self->config->{logger}) {
+		# load this logger
+	} else {
+		# load the base logger
+		load Leyland::Logger::STDERR;
+		$self->_set_log(Leyland::Logger::STDERR->new);
+	}
 
 	# init localizer, if localization path given
 	if (exists $self->config->{locales}) {
