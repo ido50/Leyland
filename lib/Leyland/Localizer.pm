@@ -4,19 +4,19 @@ package Leyland::Localizer;
 
 use Moose;
 use namespace::autoclean;
-use Wolowitz;
+use Locale::Wolowitz;
 
 =head1 NAME
 
-Leyland::Localizer - Wrapper for the Wolowitz localization system for Leyland apps
+Leyland::Localizer - Wrapper for the Locale::Wolowitz localization system for Leyland apps
 
 =head1 SYNOPSIS
 
 =head1 DESCRIPTION
 
-=head1 CLASS METHODS
+=head1 ATTRIBUTES
 
-=head1 OBJECT ATTRIBUTES
+=head1 CLASS METHODS
 
 =head1 OBJECT METHODS
 
@@ -24,10 +24,10 @@ Leyland::Localizer - Wrapper for the Wolowitz localization system for Leyland ap
 
 has 'path' => (is => 'ro', isa => 'Str', required => 1);
 
-has 'w' => (is => 'ro', isa => 'Wolowitz', writer => '_set_w');
+has 'w' => (is => 'ro', isa => 'Locale::Wolowitz', writer => '_set_w');
 
 sub BUILD {
-	$_[0]->_set_w(Wolowitz->new($_[0]->path));
+	$_[0]->_set_w(Locale::Wolowitz->new($_[0]->path));
 }
 
 sub loc {

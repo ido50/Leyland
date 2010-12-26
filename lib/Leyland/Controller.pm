@@ -14,9 +14,9 @@ Leyland::Controller - Leyland controller base class
 
 =head1 DESCRIPTION
 
-=head1 CLASS METHODS
+=head1 ATTRIBUTES
 
-=head1 OBJECT ATTRIBUTES
+=head1 CLASS METHODS
 
 =head1 OBJECT METHODS
 
@@ -28,7 +28,7 @@ class_has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_route
 sub add_route {
 	my ($class, $method, $regex, $code) = (shift, shift, shift, pop);
 
-	my $rules;
+	my $rules = {};
 	while (scalar @_) {
 		my ($key, $value) = split(/=/, shift);
 		if (defined $key && defined $value) {

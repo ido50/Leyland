@@ -26,9 +26,9 @@ Leyland - A Plack-based application framework that makes no sense
 
 =head1 DESCRIPTION
 
-=head1 CLASS METHODS
+=head1 ATTRIBUTES
 
-=head1 OBJECT ATTRIBUTES
+=head1 CLASS METHODS
 
 =head1 OBJECT METHODS
 

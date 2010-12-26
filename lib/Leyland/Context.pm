@@ -20,9 +20,9 @@ Leyland::Context - The working environment of an HTTP request and Leyland respon
 
 =head1 DESCRIPTION
 
-=head1 CLASS METHODS
+=head1 ATTRIBUTES
 
-=head1 OBJECT ATTRIBUTES
+=head1 CLASS METHODS
 
 =head1 OBJECT METHODS
 

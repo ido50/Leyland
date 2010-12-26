@@ -15,9 +15,9 @@ Leyland::Parser::Route - Parses route definitions in Leyland controllers
 
 =head1 DESCRIPTION
 
-=head1 CLASS METHODS
+=head1 ATTRIBUTES
 
-=head1 OBJECT ATTRIBUTES
+=head1 CLASS METHODS
 
 =head1 OBJECT METHODS
 
