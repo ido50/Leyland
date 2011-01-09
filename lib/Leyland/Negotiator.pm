@@ -43,7 +43,7 @@ sub find_options {
 }
 
 sub just_routes {
-	my ($self, $c, $app_routes, $path) = @_;
+	my ($self, $c, $app_routes, $path, $method) = @_;
 
 	$path ||= $c->req->path;
 
@@ -52,7 +52,13 @@ sub just_routes {
 	my @pref_routes = $self->prefs_and_routes($path);
 
 	# find all routes matching the request path
-	return $self->matching_routes($app_routes, @pref_routes);
+	my @routes = $self->matching_routes($app_routes, @pref_routes);
+
+	if ($method) {
+		return $self->negotiate_method($method, @routes);
+	} else {
+		return @routes;
+	}
 }
 
 sub find_routes {

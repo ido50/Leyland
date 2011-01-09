@@ -241,7 +241,7 @@ sub _invoke_route {
 	$c->_set_controller($c->routes->[$i]->{class});
 	
 	# but first invoke all 'auto' subs up to the matching route's controller
-	foreach ($self->_route_parents($c->routes->[$i]->{prefix})) {
+	foreach ($self->_route_parents($c->routes->[$i])) {
 		$_->auto($c, @{$c->routes->[$i]->{captures}});
 	}
 
@@ -350,36 +350,24 @@ sub _deserialize {
 }
 
 sub _route_parents {
-	my ($self, $prefix) = @_;
-	
-	my ($first, $last);
-	
+	my ($self, $route) = @_;
+
 	my @parents;
 
-	foreach ($self->controllers) {
-		if ($_->prefix eq '') {
-			$first = $_;
-		} elsif ($_->prefix eq $prefix) {
-			$last = $_;
-		}
-	}
-	
-	push(@parents, $first) if $first;
-
-	while ($prefix) {
-		$prefix =~ s!/[^/]+$!!;
-		next unless $self->routes->EXISTS($prefix);
-		
-		# get the class
-		foreach my $cont ($self->controllers) {
-			if ($cont->prefix eq $prefix) {
-				push(@parents, $cont);
+	my $class = $route->{class};
+	while ($class =~ m/Controller::(.+)$/) {
+		# attempt to find a controller for this class
+		foreach ($self->controllers) {
+			if ($_ eq $class) {
+				push(@parents, $_);
 				last;
 			}
 		}
+		# now strip the class once
+		$class =~ s/::[^:]+$//;
 	}
-
-	push(@parents, $last) if $last;
+	$class .= '::Root';
+	push(@parents, $class);
 
 	return @parents;
 }

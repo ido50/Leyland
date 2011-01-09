@@ -174,13 +174,22 @@ sub _build_mimes {
 sub forward {
 	my ($self, $path) = (shift, shift);
 
-	$self->exception({ code => 500 }) unless $path;
+	$self->exception({ code => 500, error => "You must provide a path to forward to" }) unless $path;
 
-	$self->log->info("Attempting to forward request to $path.");
+	my $method;
 
-	my @routes = $self->leyland->conneg->just_routes($self, $self->leyland->routes, $path);
+	if ($path =~ m/^(get|post|put|del|head|options(?:_)/) {
+		$method = $1;
+		$path = $';
 
-	$self->exception({ code => 500 }) unless scalar @routes;
+		$self->log->info("Attempting to forward request to $path with a $method method.");
+	} else {
+		$self->log->info("Attempting to forward request to $path with any method.");
+	}
+
+	my @routes = $self->leyland->conneg->just_routes($self, $self->leyland->routes, $path, $method);
+
+	$self->exception({ code => 500, error => "Can't forward as no matching routes were found" }) unless scalar @routes;
 
 	my @pass = ($self->controller, $self);
 	push(@pass, @{$routes[0]->{captures}}) if scalar @{$routes[0]->{captures}};
