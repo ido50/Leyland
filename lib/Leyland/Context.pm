@@ -178,7 +178,7 @@ sub forward {
 
 	my $method;
 
-	if ($path =~ m/^(get|post|put|del|head|options):/) {
+	if ($path =~ m/^(GET|POST|PUT|DELETE|HEAD|OPTIONS):/) {
 		$method = $1;
 		$path = $';
 
