@@ -191,7 +191,7 @@ sub forward {
 
 	$self->exception({ code => 500, error => "Can't forward as no matching routes were found" }) unless scalar @routes;
 
-	my @pass = ($self->controller, $self);
+	my @pass = ($routes[0]->{class}, $self);
 	push(@pass, @{$routes[0]->{captures}}) if scalar @{$routes[0]->{captures}};
 	push(@pass, @_) if scalar @_;
 
