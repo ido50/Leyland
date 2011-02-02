@@ -269,10 +269,19 @@ sub _handle_exception {
 		$exp = Leyland::Exception->new(code => 500, error => $err);
 	}
 
+	# log the error thrown
 	my $err = $exp->error || $Leyland::CODES->{$exp->code}->[0];
 	$c->log->debug("Exception thrown: ".$exp->code.", message: $err");
 
+	# set response status to the exception HTTP code
 	$c->res->status($exp->code);
+
+	# is this a redirecting exception?
+	if ($exp->code =~ m/^3\d\d$/ && $exp->has_location) {
+		$c->res->redirect($exp->location);
+		$self->_log_response($c);
+		return $c->res->finalize;
+	}
 
 	# do we have templates for any of the client's requested MIME types?
 	# if so, render the first one you find.
