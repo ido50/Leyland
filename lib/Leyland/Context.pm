@@ -206,7 +206,13 @@ sub loc {
 }
 
 sub exception {
-	Leyland::Exception->throw($_[1]);
+	my ($self, $err) = @_;
+
+	if ($err->{location} && ref $err->{location} =~ m/^URI/) {
+		$err->{location} = $err->{location}->as_string;
+	}
+
+	Leyland::Exception->throw($err);
 }
 
 sub path_to {
