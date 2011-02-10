@@ -264,7 +264,7 @@ sub _handle_exception {
 	$c->_set_died(1);
 
 	# have we caught a Leyland::Exception object?
-	unless (ref $exp && $exp->isa('Leyland::Exception')) {
+	unless (blessed $exp && $exp->isa('Leyland::Exception')) {
 		my $err = ref $exp ? Dumper($exp) : $exp;
 		$exp = Leyland::Exception->new(code => 500, error => $err);
 	}
