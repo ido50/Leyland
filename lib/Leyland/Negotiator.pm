@@ -143,7 +143,7 @@ sub matching_routes {
 			# find all routes that support the request method (i.e. GET, POST, etc.)
 			METH: foreach my $m (sort { $a eq 'any' || $b eq 'any' } keys %$route_meths) {
 				# do not match internal routes
-				RULE: foreach my $rule (@{$route_meths->{$m}->{rules}}) {
+				RULE: foreach my $rule (@{$route_meths->{$m}->{rules}->{is} || []}) {
 					next METH if $rule eq 'internal' && !$internal;
 				}
 
