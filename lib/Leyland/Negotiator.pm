@@ -27,7 +27,7 @@ sub find_options {
 
 	my @pref_routes = $self->prefs_and_routes($c->req->path);
 
-	my @routes = $self->matching_routes($app_routes, @pref_routes);
+	my @routes = $self->matching_routes($app_routes, \@pref_routes);
 
 	# have we found any matching routes?
 	$c->exception({ code => 404 }) unless scalar @routes;
@@ -43,19 +43,19 @@ sub find_options {
 }
 
 sub just_routes {
-	my ($self, $c, $app_routes, $path, $method) = @_;
+	my ($self, $c, $args) = @_;
 
-	$path ||= $c->req->path;
+	$args->{path} ||= $c->req->path;
 
 	# let's find all possible prefix/route combinations
 	# from the request path
-	my @pref_routes = $self->prefs_and_routes($path);
+	my @pref_routes = $self->prefs_and_routes($args->{path});
 
 	# find all routes matching the request path
-	my @routes = $self->matching_routes($app_routes, @pref_routes);
+	my @routes = $self->matching_routes($args->{app_routes}, \@pref_routes, $args->{internal});
 
-	if ($method) {
-		return $self->negotiate_method($method, @routes);
+	if ($args->{method}) {
+		return $self->negotiate_method($args->{method}, @routes);
 	} else {
 		return @routes;
 	}
@@ -69,7 +69,7 @@ sub find_routes {
 	# let's find all possible prefix/route combinations
 	# from the request path, and then find all routes matching
 	# the request path
-	my @routes = $self->just_routes($c, $app_routes, $path);
+	my @routes = $self->just_routes($c, { app_routes => $app_routes, path => $path });
 
 	$c->log->info('Found '.scalar(@routes).' routes matching '.$path);
 
@@ -119,10 +119,10 @@ sub prefs_and_routes {
 }
 
 sub matching_routes {
-	my ($self, $app_routes, @pref_routes) = @_;
+	my ($self, $app_routes, $pref_routes, $internal) = @_;
 
 	my @routes;
-	foreach (@pref_routes) {		
+	foreach (@$pref_routes) {
 		my $pref_name = $_->{prefix} || '_root_';
 
 		next unless $app_routes->EXISTS($pref_name);
@@ -132,7 +132,7 @@ sub matching_routes {
 		next unless $pref_routes;
 		
 		# find matching routes in this prefix
-		foreach my $r ($pref_routes->Keys) {
+		ROUTE: foreach my $r ($pref_routes->Keys) {
 			# does the requested route match the current route?
 			next unless my @captures = ($_->{route} =~ m/$r/);
 			
@@ -141,8 +141,13 @@ sub matching_routes {
 			my $route_meths = $pref_routes->FETCH($r);
 
 			# find all routes that support the request method (i.e. GET, POST, etc.)
-			foreach my $m (sort { $a eq 'any' || $b eq 'any' } keys %$route_meths) {
-				# it does, but is there a subroutine for the exact request method?
+			METH: foreach my $m (sort { $a eq 'any' || $b eq 'any' } keys %$route_meths) {
+				# do not match internal routes
+				RULE: foreach my $rule (@{$route_meths->{$m}->{rules}}) {
+					next METH if $rule eq 'internal' && !$internal;
+				}
+
+				# okay, add this route
 				push(@routes, { method => $m, class => $route_meths->{$m}->{class}, prefix => $_->{prefix}, route => $r, code => $route_meths->{$m}->{code}, rules => $route_meths->{$m}->{rules}, captures => \@captures });
 			}
 		}

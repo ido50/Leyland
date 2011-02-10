@@ -187,7 +187,7 @@ sub forward {
 		$self->log->info("Attempting to forward request to $path with any method.");
 	}
 
-	my @routes = $self->leyland->conneg->just_routes($self, $self->leyland->routes, $path, $method);
+	my @routes = $self->leyland->conneg->just_routes($self, { app_routes => $self->leyland->routes, path => $path, method => $method, internal => 1 });
 
 	$self->exception({ code => 500, error => "Can't forward as no matching routes were found" }) unless scalar @routes;
 
