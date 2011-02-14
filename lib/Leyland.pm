@@ -57,7 +57,25 @@ has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_re
 has 'context_class' => (is => 'ro', isa => 'Str', default => 'Leyland::Context');
 
 has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
-	
+
+around BUILDARGS => sub {
+	my ($orig, $class, %opts) = @_;
+
+	# parse the config variable, take out environment-specific parameters
+	if ($opts{config}) {
+		my $envs = delete $opts{config}->{environments};
+		if ($envs->{$ENV{PLACK_ENV}}) {
+			foreach (keys %{$envs->{$ENV{PLACK_ENV}}}) {
+				$opts{config}->{$_} = delete $envs->{$ENV{PLACK_ENV}}->{$_};
+			}
+		}
+		delete $opts{config}->{environments};
+	}
+
+	# create the object
+	return $class->$orig(%opts);
+};
+
 sub BUILD {
 	my $self = shift;
 
