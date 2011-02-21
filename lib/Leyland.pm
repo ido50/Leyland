@@ -70,6 +70,7 @@ around BUILDARGS => sub {
 			}
 		}
 		delete $opts{config}->{environments};
+		$opts{config}->{app} ||= 'MyApp';
 	}
 
 	# create the object
@@ -426,7 +427,7 @@ sub _initial_debug_info {
 	$t1->exec(\&_autolog, $self->log);
 
 	$t1->hr('top');
-	$t1->row($self->config->{app}. ' v'.$self->config->{version}.' (powered by Leyland v'.$Leyland::VERSION.')');
+	$t1->row($self->config->{app}.' (powered by Leyland v'.$Leyland::VERSION.')');
 	$t1->dhr;
 	$t1->row('Current working environment: '.$self->cwe);
 	$t1->row('Avilable views: '.join(', ', @views));
