@@ -36,8 +36,6 @@ has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
 
 has 'views' => (is => 'ro', isa => 'ArrayRef', default => sub { [] });
 
-has 'config' => (is => 'ro', isa => 'HashRef', default => sub { {} });
-
 has 'req' => (is => 'ro', isa => 'Plack::Request', lazy_build => 1);
 
 has 'res' => (is => 'ro', isa => 'Plack::Response', default => sub { Plack::Response->new(200) });
@@ -82,6 +80,10 @@ sub xml {
 
 sub json {
 	shift->leyland->json;
+}
+
+sub config {
+	shift->leyland->config;
 }
 
 sub pass {
