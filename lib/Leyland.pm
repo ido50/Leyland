@@ -242,6 +242,8 @@ sub handle {
 		$i++;
 	}
 
+	$c->finalize(\$ret);
+
 	$c->res->body($ret);
 
 	$self->_log_response($c);

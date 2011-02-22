@@ -244,7 +244,7 @@ sub uri_for {
 	return URI->new($self->req->base.$path);
 }
 
-sub pre_exception {
+sub finalize {
 	1;
 }
 
