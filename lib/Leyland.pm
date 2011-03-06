@@ -6,6 +6,7 @@ $Leyland::VERSION = 0.1;
 
 use Moose;
 use namespace::autoclean;
+use Encode;
 use Leyland::Negotiator;
 use Leyland::Localizer;
 use JSON::Any;
@@ -46,7 +47,7 @@ has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', wr
 
 has 'futil' => (is => 'ro', isa => 'File::Util', default => sub { File::Util->new });
 
-has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
+has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new(utf8 => 1) }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
 
 has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; });
 
@@ -244,7 +245,9 @@ sub handle {
 
 	$c->finalize(\$ret);
 
-	$c->res->body($ret);
+	my $body = Encode::encode_utf8($ret);
+	$c->res->body($body);
+	$c->res->content_length(length($body));
 
 	$self->_log_response($c);
 
@@ -309,8 +312,10 @@ sub _handle_exception {
 	if ($exp->has_mimes) {
 		foreach (@{$c->wanted_mimes}) {
 			if ($exp->has_mime($_->{mime})) {
-				$c->res->content_type($_->{mime}.';charset=UTF-8');
-				$c->res->body($c->template($exp->mime($_->{mime}), $exp->hash, $exp->use_layout));
+				$c->res->content_type($_->{mime}.'; charset=UTF-8');
+				my $body = Encode::encode_utf8($c->template($exp->mime($_->{mime}), $exp->hash, $exp->use_layout));
+				$c->res->body($body);
+				$c->res->content_length(length($body));
 				$self->_log_response($c);
 				return $c->res->finalize;
 			}
@@ -322,16 +327,20 @@ sub _handle_exception {
 	# JSON or XML
 	foreach (@{$c->wanted_mimes}) {
 		if ($_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml') {
-			$c->res->content_type($_->{mime}.';charset=UTF-8');
-			$c->res->body($self->_deserialize($c, $exp->hash, $_->{mime}));
+			$c->res->content_type($_->{mime}.'; charset=UTF-8');
+			my $body = Encode::encode_utf8($self->_deserialize($c, $exp->hash, $_->{mime}));
+			$c->res->body($body);
+			$c->res->content_length(length($body));
 			$self->_log_response($c);
 			return $c->res->finalize;
 		} elsif ($_->{mime} eq 'text/html' || $_->{mime} eq 'text/plain') {
 			my $ret = Dumper($exp->hash);
 			$ret =~ s/^\$VAR1 = //;
 			$ret =~ s/;$//;
-			$c->res->content_type($_->{mime}.';charset=UTF-8');
-			$c->res->body($ret);
+			my $body = Encode::encode_utf8($ret);
+			$c->res->content_type($_->{mime}.'; charset=UTF-8');
+			$c->res->body($body);
+			$c->res->content_length(length($body));
 			$self->_log_response($c);
 			return $c->res->finalize;
 		}
@@ -342,8 +351,10 @@ sub _handle_exception {
 	my $ret = Dumper($exp->error);
 	$ret =~ s/^\$VAR1 = //;
 	$ret =~ s/;$//;
-	$c->res->content_type('text/plain;charset=UTF-8');
-	$c->res->body($ret);
+	my $body = Encode::encode_utf8($ret);
+	$c->res->content_type('text/plain; charset=UTF-8');
+	$c->res->body($body);
+	$c->res->content_length(length($body));
 	$self->_log_response($c);
 	return $c->res->finalize;
 }
@@ -353,8 +364,8 @@ sub _deserialize {
 
 	my $ct = $c->res->content_type;
 	unless ($ct) {
-		$ct = $want.';charset=UTF-8' if $want && $want =~ m/text|json|xml|html|atom/;
-		$ct ||= 'text/plain;charset=UTF-8';
+		$ct = $want.'; charset=UTF-8' if $want && $want =~ m/text|json|xml|html|atom/;
+		$ct ||= 'text/plain; charset=UTF-8';
 		$c->log->info($ct .' will be returned');
 		$c->res->content_type($ct);
 	}

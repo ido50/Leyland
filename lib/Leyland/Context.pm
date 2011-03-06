@@ -7,7 +7,6 @@ use namespace::autoclean;
 use Plack::Request;
 use Plack::Response;
 use Leyland::Exception;
-use Encode;
 use Carp;
 use Module::Load;
 use Data::Dumper;
@@ -137,7 +136,7 @@ sub render {
 }
 
 sub template {
-	Encode::encode('utf8', shift->render(@_));
+	shift->render(@_);
 }
 
 sub structure {
