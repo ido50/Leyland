@@ -216,31 +216,16 @@ sub exception {
 	Leyland::Exception->throw($err);
 }
 
-sub path_to {
-	my ($self, @args) = @_;
-
-	my $params = pop @args if scalar @args && ref $args[$#args] eq 'HASH';
-	
-	foreach (@args) {
-		s!^/!!;
-	}
-
-	my $path = '';
-	$path .= join('/', @args) if scalar @args;
-	if ($params && ref $params eq 'HASH') {
-		$path .= '?' . join('&', map($_.'='.$params->{$_}, keys %$params));
-	}
-
-	return '/'.$path;
-}
-
 sub uri_for {
-	my $self = shift;
+	my ($self, $path, $args) = @_;
 
-	my $path = $self->path_to(@_);
-	$path =~ s!^/!!;
+	my $uri = $self->req->base;
+	my $full_path = $uri->path . $path;
+	$full_path =~ s!^/!!; # remove starting slash
+	$uri->path($full_path);
+	$uri->query_form($args) if $args;
 
-	return URI->new($self->req->base.$path);
+	return $uri;
 }
 
 sub finalize {

@@ -245,7 +245,7 @@ sub handle {
 
 	$c->finalize(\$ret);
 
-	my $body = Encode::encode_utf8($ret);
+	my $body = Encode::encode('UTF-8', $ret);
 	$c->res->body($body);
 	$c->res->content_length(length($body));
 
@@ -313,7 +313,7 @@ sub _handle_exception {
 		foreach (@{$c->wanted_mimes}) {
 			if ($exp->has_mime($_->{mime})) {
 				$c->res->content_type($_->{mime}.'; charset=UTF-8');
-				my $body = Encode::encode_utf8($c->template($exp->mime($_->{mime}), $exp->hash, $exp->use_layout));
+				my $body = Encode::encode('UTF-8', $c->template($exp->mime($_->{mime}), $exp->hash, $exp->use_layout));
 				$c->res->body($body);
 				$c->res->content_length(length($body));
 				$self->_log_response($c);
@@ -328,7 +328,7 @@ sub _handle_exception {
 	foreach (@{$c->wanted_mimes}) {
 		if ($_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml') {
 			$c->res->content_type($_->{mime}.'; charset=UTF-8');
-			my $body = Encode::encode_utf8($self->_deserialize($c, $exp->hash, $_->{mime}));
+			my $body = Encode::encode('UTF-8', $self->_deserialize($c, $exp->hash, $_->{mime}));
 			$c->res->body($body);
 			$c->res->content_length(length($body));
 			$self->_log_response($c);
@@ -337,7 +337,7 @@ sub _handle_exception {
 			my $ret = Dumper($exp->hash);
 			$ret =~ s/^\$VAR1 = //;
 			$ret =~ s/;$//;
-			my $body = Encode::encode_utf8($ret);
+			my $body = Encode::encode('UTF-8', $ret);
 			$c->res->content_type($_->{mime}.'; charset=UTF-8');
 			$c->res->body($body);
 			$c->res->content_length(length($body));
@@ -351,7 +351,7 @@ sub _handle_exception {
 	my $ret = Dumper($exp->error);
 	$ret =~ s/^\$VAR1 = //;
 	$ret =~ s/;$//;
-	my $body = Encode::encode_utf8($ret);
+	my $body = Encode::encode('UTF-8', $ret);
 	$c->res->content_type('text/plain; charset=UTF-8');
 	$c->res->body($body);
 	$c->res->content_length(length($body));
