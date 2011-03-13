@@ -10,14 +10,12 @@ use namespace::autoclean;
 use Carp;
 use Data::Dumper;
 use Encode;
-use JSON::Any;
 use Leyland::Localizer;
 use Leyland::Negotiator;
 use Module::Load;
 use Text::SpanningTable;
 use Tie::IxHash;
 use Try::Tiny;
-use XML::TreePP;
 
 =head1 NAME
 
@@ -44,10 +42,6 @@ has 'localizer' => (is => 'ro', isa => 'Leyland::Localizer', predicate => 'has_l
 has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
 
 has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
-
-has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new(utf8 => 1) }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
-
-has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; });
 
 has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_req_counter');
 
@@ -86,7 +80,7 @@ sub handle {
 		# get all available methods by using Leyland::Negotiator
 		# and return a 204 No Content response
 		$c->log->info('Finding supported methods for requested path.');
-		return $c->_respond(204, ['Allow' => join(', ', Leyland::Negotiator->find_options($c, $self->routes))]);
+		return $c->_respond(204, { 'Allow' => join(', ', Leyland::Negotiator->find_options($c, $self->routes)) });
 	} else {
 		# negotiate for routes and invoke the first matching route (if any).
 		# handle route passes and return the final output after UTF-8 encoding.
@@ -94,11 +88,11 @@ sub handle {
 		return try {
 			# get routes
 			$c->log->info('Searching matching routes.');
-			$c->_set_routes([Leyland::Negotiator->negotiate($c, $self->routes)]);
+			$c->_set_routes(Leyland::Negotiator->negotiate($c, $self->routes));
 
 			# invoke first route
 			$c->log->info('Invoking first matching route.');
-			my $ret = $self->_invoke_route($c);
+			my $ret = $c->_invoke_route;
 
 			# are we passing to the next matching route?
 			# to prevent infinite loops, limit passing to no more than 100 times
@@ -108,7 +102,7 @@ sub handle {
 				# so we don't try to do this infinitely
 				$c->_pass(0);
 				# no let's invoke the route
-				$ret = $self->_invoke_route($c);
+				$ret = $c->_invoke_route;
 			}
 
 			$c->finalize(\$ret);
@@ -235,162 +229,54 @@ sub BUILD {
 	$self->_initial_debug_info;
 }
 
-sub _invoke_route {
-	my ($self, $c) = @_;
-
-	my $i = $c->current_route;
-
-	$c->_set_controller($c->routes->[$i]->{class});
-	
-	# but first invoke all 'auto' subs up to the matching route's controller
-	foreach ($self->_route_parents($c->routes->[$i])) {
-		$_->auto($c, @{$c->routes->[$i]->{captures}});
-	}
-
-	# then invoke the pre_route subroutine
-	$c->controller->pre_route($c, @{$c->routes->[$i]->{captures}});
-
-	# invoke the route itself
-	$c->_set_want($c->routes->[$i]->{media});
-	my $ret = $self->_deserialize(
-		$c,
-		$c->routes->[$i]->{code}->($c->controller, $c, @{$c->routes->[$i]->{captures}}),
-		$c->routes->[$i]->{media}
-	);
-
-	# invoke the post_route subroutine
-	$c->controller->post_route($c, \$ret);
-
-	return $ret;
-}
-
 sub _handle_exception {
 	my ($self, $c, $exp) = @_;
 
-	# have we caught a Leyland::Exception object?
-	unless (blessed $exp && $exp->isa('Leyland::Exception')) {
-		my $err = ref $exp ? Dumper($exp) : $exp;
-		$exp = Leyland::Exception->new(code => 500, error => $err);
-	}
+	# have we caught a Leyland::Exception object? if not, turn it into
+	# a Leyland::Exception
+	$exp = Leyland::Exception->new(code => 500, error => ref $exp ? Dumper($exp) : $exp)
+		unless blessed $exp && $exp->isa('Leyland::Exception');
 
 	# log the error thrown
 	my $err = $exp->error || $Leyland::CODES->{$exp->code}->[0];
-	$c->log->debug("Exception thrown: ".$exp->code.", message: $err");
-
-	# set response status to the exception HTTP code
-	$c->res->status($exp->code);
+	$c->log->debug('Exception thrown: '.$exp->code.", message: $err");
 
 	# is this a redirecting exception?
 	if ($exp->code =~ m/^3\d\d$/ && $exp->has_location) {
 		$c->res->redirect($exp->location);
-		$self->_log_response($c);
-		return $c->res->finalize;
+		return $c->_respond($exp->code);
 	}
 
 	# do we have templates for any of the client's requested MIME types?
 	# if so, render the first one you find.
 	if ($exp->has_mimes) {
 		foreach (@{$c->wanted_mimes}) {
-			if ($exp->has_mime($_->{mime})) {
-				$c->res->content_type($_->{mime}.'; charset=UTF-8');
-				my $body = Encode::encode('UTF-8', $c->template($exp->mime($_->{mime}), $exp->hash, $exp->use_layout));
-				$c->res->body($body);
-				$c->res->content_length(length($body));
-				$self->_log_response($c);
-				return $c->res->finalize;
-			}
+			return $c->_respond(
+				$exp->code,
+				{ 'Content-Type' => $_->{mime}.'; charset=UTF-8' },
+				$c->template($exp->mime($_->{mime}), $exp->hash, $exp->use_layout)
+			) if $exp->has_mime($_->{mime});
 		}
 	}
 
 	# we haven't found any templates for the request mime types, let's
-	# attempt to deserialize the error ourselves if the client accepts
+	# attempt to serialize the error ourselves if the client accepts
 	# JSON or XML
 	foreach (@{$c->wanted_mimes}) {
-		if ($_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml') {
-			$c->res->content_type($_->{mime}.'; charset=UTF-8');
-			my $body = Encode::encode('UTF-8', $self->_deserialize($c, $exp->hash, $_->{mime}));
-			$c->res->body($body);
-			$c->res->content_length(length($body));
-			$self->_log_response($c);
-			return $c->res->finalize;
-		} elsif ($_->{mime} eq 'text/html' || $_->{mime} eq 'text/plain') {
-			my $ret = Dumper($exp->hash);
-			$ret =~ s/^\$VAR1 = //;
-			$ret =~ s/;$//;
-			my $body = Encode::encode('UTF-8', $ret);
-			$c->res->content_type($_->{mime}.'; charset=UTF-8');
-			$c->res->body($body);
-			$c->res->content_length(length($body));
-			$self->_log_response($c);
-			return $c->res->finalize;
-		}
+		return $c->_respond(
+			$exp->code,
+			{ 'Content-Type' => $_->{mime}.'; charset=UTF-8' },
+			$c->_serialize($exp->hash, $_->{mime})
+		) if $_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml';
 	}
 
 	# We do not support none of the MIME types the client wants,
 	# let's return plain text
-	my $ret = Dumper($exp->error);
-	$ret =~ s/^\$VAR1 = //;
-	$ret =~ s/;$//;
-	my $body = Encode::encode('UTF-8', $ret);
-	$c->res->content_type('text/plain; charset=UTF-8');
-	$c->res->body($body);
-	$c->res->content_length(length($body));
-	$self->_log_response($c);
-	return $c->res->finalize;
-}
-
-sub _deserialize {
-	my ($self, $c, $obj, $want) = @_;
-
-	my $ct = $c->res->content_type;
-	unless ($ct) {
-		$ct = $want.'; charset=UTF-8' if $want && $want =~ m/text|json|xml|html|atom/;
-		$ct ||= 'text/plain; charset=UTF-8';
-		$c->log->info($ct .' will be returned');
-		$c->res->content_type($ct);
-	}
-
-	if (ref $obj eq 'ARRAY' && (scalar @$obj == 2 || scalar @$obj == 3) && ref $obj->[0] eq 'HASH') {
-		# render specified template
-		if ((exists $obj->[0]->{$want} && $obj->[0]->{$want} eq '') || !exists $obj->[0]->{$want}) {
-			# empty string for template name means deserialize
-			# same goes if the route returns the wanted type
-			# but has no template rule for it
-			return $c->structure($obj->[1], $want);
-		} else {
-			my $use_layout = scalar @$obj == 3 && defined $obj->[2] ? $obj->[2] : 1;
-			return $c->template($obj->[0]->{$want}, $obj->[1], $use_layout);
-		}
-	} elsif (ref $obj eq 'ARRAY' || ref $obj eq 'HASH') {
-		# deserialize according to wanted type
-		return $c->structure($obj, $want);
-	} else { # implied(?): ref $obj eq 'SCALAR'
-		# return as is
-		return $obj;
-	}
-}
-
-sub _route_parents {
-	my ($self, $route) = @_;
-
-	my @parents;
-
-	my $class = $route->{class};
-	while ($class =~ m/Controller::(.+)$/) {
-		# attempt to find a controller for this class
-		foreach ($self->controllers) {
-			if ($_ eq $class) {
-				push(@parents, $_);
-				last;
-			}
-		}
-		# now strip the class once
-		$class =~ s/::[^:]+$//;
-	}
-	$class .= '::Root';
-	push(@parents, $class);
-
-	return @parents;
+	return $c->_respond(
+		$exp->code,
+		{ 'Content-Type' => 'text/plain; charset=UTF-8' },
+		Dumper($exp->error)
+	);
 }
 
 sub _default_config { { app => 'Leyland', views => ['Tenjin'] } }

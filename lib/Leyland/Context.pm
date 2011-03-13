@@ -8,9 +8,11 @@ use namespace::autoclean;
 
 use Carp;
 use Data::Dumper;
+use JSON::Any;
 use Leyland::Exception;
 use Module::Load;
 use Text::SpanningTable;
+use XML::TreePP;
 
 extends 'Plack::Request';
 
@@ -40,8 +42,6 @@ has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
 
 has 'num' => (is => 'ro', isa => 'Int', default => 0);
 
-has 'views' => (is => 'ro', isa => 'ArrayRef', default => sub { [] });
-
 has 'res' => (is => 'ro', isa => 'Plack::Response', lazy_build => 1);
 
 has 'routes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_routes', writer => '_set_routes');
@@ -60,17 +60,41 @@ has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
 
 has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user', clearer => 'clear_user');
 
+has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new(utf8 => 1) }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
+
+has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; });
+
 has '_pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_pass_next');
+
+has '_data' => (is => 'ro', isa => 'Any', predicate => '_has_data', writer => '_set_data');
 
 sub leyland { shift->app }
 
 sub log { shift->app->log }
 
-sub xml { shift->app->xml }
-
-sub json { shift->app->json }
-
 sub config { shift->app->config }
+
+sub views { shift->app->views }
+
+sub params { shift->parameters }
+
+sub data {
+	my $self = shift;
+
+	return unless $self->content_type;
+
+	return $self->_data if $self->_has_data;
+
+	if ($self->content_type eq 'application/json') {
+		$self->_set_data($self->json->from_json($self->content));
+		return $self->_data;
+	} elsif ($self->content_type eq 'application/atom+xml' || $self->content_type eq 'application/xml') {
+		$self->_set_data($self->xml->parse($self->content));
+		return $self->_data;
+	}
+
+	return;
+}
 
 sub pass {
 	my $self = shift;
@@ -231,7 +255,7 @@ sub _respond {
 	my ($self, $status, $headers, $content) = @_;
 
 	$self->res->status($status) if $status && $status =~ m/^\d+$/;
-	$self->res->headers($headers) if $headers && ref $headers eq 'ARRAY';
+	$self->res->headers($headers) if $headers && ref $headers eq 'HASH';
 	if ($content) {
 		my $body = Encode::encode('UTF-8', $content);
 		$self->res->body($body);
@@ -277,6 +301,97 @@ sub _log_response {
 	$self->log->info($t->row('Response #', 'Status', [3, 'Content-Type']));
 	$self->log->info($t->hr('bottom'));
 	$self->log->info(' ');
+}
+
+sub _invoke_route {
+	my $self = shift;
+
+	my $i = $self->current_route;
+
+	$self->_set_controller($self->routes->[$i]->{class});
+	
+	# but first invoke all 'auto' subs up to the matching route's controller
+	foreach ($self->_route_parents($self->routes->[$i])) {
+		$_->auto($self, @{$self->routes->[$i]->{captures}});
+	}
+
+	# then invoke the pre_route subroutine
+	$self->controller->pre_route($self, @{$self->routes->[$i]->{captures}});
+
+	# invoke the route itself
+	$self->_set_want($self->routes->[$i]->{media});
+	my $ret = $self->_serialize(
+		$self->routes->[$i]->{code}->($self->controller, $self, @{$self->routes->[$i]->{captures}}),
+		$self->routes->[$i]->{media}
+	);
+
+	# invoke the post_route subroutine
+	$self->controller->post_route($self, \$ret);
+
+	return $ret;
+}
+
+sub _serialize {
+	my ($self, $obj, $want) = @_;
+
+	my $ct = $self->res->content_type;
+	unless ($ct) {
+		$ct = $want.'; charset=UTF-8' if $want && $want =~ m/text|json|xml|html|atom/;
+		$ct ||= 'text/plain; charset=UTF-8';
+		$self->log->info($ct .' will be returned');
+		$self->res->content_type($ct);
+	}
+
+	if (ref $obj && ref $obj eq 'ARRAY' && (scalar @$obj == 2 || scalar @$obj == 3) && ref $obj->[0] eq 'HASH') {
+		# render specified template
+		if ((exists $obj->[0]->{$want} && $obj->[0]->{$want} eq '') || !exists $obj->[0]->{$want}) {
+			# empty string for template name means deserialize
+			# same goes if the route returns the wanted type
+			# but has no template rule for it
+			return $self->structure($obj->[1], $want);
+		} else {
+			my $use_layout = scalar @$obj == 3 && defined $obj->[2] ? $obj->[2] : 1;
+			return $self->template($obj->[0]->{$want}, $obj->[1], $use_layout);
+		}
+	} elsif (ref $obj && (ref $obj eq 'ARRAY' || ref $obj eq 'HASH')) {
+		# serialize according to wanted type
+		return $self->structure($obj, $want);
+	} elsif (ref $obj) {
+		# $obj is some kind of reference, use Data::Dumper;
+		Dumper($obj);
+	} else {
+		# $obj is a scalar, return as is
+		return $obj;
+	}
+}
+
+sub _route_parents {
+	my ($self, $route) = @_;
+
+	my @parents;
+
+	my $class = $route->{class};
+	while ($class =~ m/Controller::(.+)$/) {
+		# attempt to find a controller for this class
+		foreach ($self->app->controllers) {
+			if ($_ eq $class) {
+				push(@parents, $_);
+				last;
+			}
+		}
+		# now strip the class once
+		$class =~ s/::[^:]+$//;
+	}
+	$class .= '::Root';
+	push(@parents, $class);
+
+	return @parents;
+}
+
+sub FOREIGNBUILDARGS {
+	my ($class, %args) = @_;
+
+	return ($args{env});
 }
 
 sub BUILD { shift->_log_request }

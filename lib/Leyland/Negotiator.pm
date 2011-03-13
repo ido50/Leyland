@@ -37,52 +37,51 @@ sub negotiate {
 	# let's find all possible prefix/route combinations
 	# from the request path, and then find all routes matching
 	# the request path
+	my $routes = [];
 	$path ||= $c->path;
-	my @routes = $class->_negotiate_path($c, { app_routes => $app_routes, path => $path })
-		|| $c->exception({ code => 404 }) unless scalar @routes;
+	$routes = $class->_negotiate_path($c, { app_routes => $app_routes, path => $path });
+	$c->exception({ code => 404 }) unless scalar @$routes;
 
-	$c->log->info('Found '.scalar(@routes).' routes matching '.$path);
+	$c->log->info('Found '.scalar(@$routes).' routes matching '.$path);
 
 	# 3. REQUEST METHOD NEGOTIATION
 	# --------------------------------------------------------------
 	# weed out routes that do not match request method
 	$c->log->info('Negotiating request method.');
-	@routes = $class->_negotiate_method($c->method, @routes)
-		|| $c->exception({ code => 405 }) unless scalar @routes;
+	$routes = $class->_negotiate_method($c->method, $routes);
+	$c->exception({ code => 405 }) unless scalar @$routes;
 
 	# 4. RECEIVED CONTENT TYPE NEGOTIATION
 	# --------------------------------------------------------------
 	# weed out all routes that do not accept the media type that the
 	# client used for the request
 	$c->log->info('Negotiating media type received.');
-	@routes = $class->_negotiate_receive_media($c, @routes)
-		|| $c->exception({ code => 415 }) unless scalar @routes;
+	$routes = $class->_negotiate_receive_media($c, $routes);
+	$c->exception({ code => 415 }) unless scalar @$routes;
 
 	# 5. RETURNED CONTENT TYPE NEGOTIATION
 	# --------------------------------------------------------------
 	# weed out all routes that do not return any media type
 	# the client accepts
 	$c->log->info('Negotiating media type returned.');
-	@routes = $class->_negotiate_return_media($c, @routes)
-		|| $c->exception({ code => 406 }) unless scalar @routes;
+	$routes = $class->_negotiate_return_media($c, $routes);
+	$c->exception({ code => 406 }) unless scalar @$routes;
 
-	return @routes;
+	return $routes;
 }
 
 sub find_options {
 	my ($class, $c, $app_routes) = @_;
 
-	my @pref_routes = $class->prefs_and_routes($c->path);
-
-	my @routes = $class->matching_routes($app_routes, \@pref_routes);
+	my $routes = $class->matching_routes($app_routes, $class->prefs_and_routes($c->path));
 
 	# have we found any matching routes?
-	$c->exception({ code => 404 }) unless scalar @routes;
+	$c->exception({ code => 404 }) unless scalar @$routes;
 
 	# okay, we have, let's see which HTTP methods are supported by
 	# these routes
 	my %meths = ( 'OPTIONS' => 1 );
-	foreach (@routes) {
+	foreach (@$routes) {
 		$meths{$class->method_name($_->{method})} = 1;
 	}
 
@@ -105,16 +104,13 @@ sub _negotiate_path {
 	$args->{path} ||= $c->path;
 
 	# let's find all possible prefix/route combinations
-	# from the request path
-	my @pref_routes = $class->_prefs_and_routes($args->{path});
-
-	# find all routes matching the request path
-	my @routes = $class->_matching_routes($args->{app_routes}, \@pref_routes, $args->{internal});
+	# from the request path and then find all routes matching the request path
+	my $routes = $class->_matching_routes($args->{app_routes}, $class->_prefs_and_routes($args->{path}), $args->{internal});
 
 	if ($args->{method}) {
-		return $class->_negotiate_method($args->{method}, @routes);
+		return $class->_negotiate_method($args->{method}, $routes);
 	} else {
-		return @routes;
+		return $routes;
 	}
 }
 
@@ -127,12 +123,12 @@ The following methods are only to be used internally.
 sub _prefs_and_routes {
 	my ($class, $path) = @_;
 
-	my @pref_routes = ({ prefix => '', route => $path });
+	my $pref_routes = [{ prefix => '', route => $path }];
 	my ($prefix) = ($path =~ m!^(/[^/]+)!);
 	my $route = $' || '/';
 	my $i = 0; # counter to prevent infinite loops, probably should removed
 	while ($prefix && $i < 100) {
-		push(@pref_routes, { prefix => $prefix, route => $route });
+		push(@$pref_routes, { prefix => $prefix, route => $route });
 		
 		my ($suffix) = ($route =~ m!^(/[^/]+)!);
 		last unless $suffix;
@@ -141,13 +137,13 @@ sub _prefs_and_routes {
 		$i++;
 	}
 
-	return @pref_routes;
+	return $pref_routes;
 }
 
 sub _matching_routes {
 	my ($class, $app_routes, $pref_routes, $internal) = @_;
 
-	my @routes;
+	my $routes = [];
 	foreach (@$pref_routes) {
 		my $pref_name = $_->{prefix} || '_root_';
 
@@ -174,33 +170,27 @@ sub _matching_routes {
 				}
 
 				# okay, add this route
-				push(@routes, { method => $m, class => $route_meths->{$m}->{class}, prefix => $_->{prefix}, route => $r, code => $route_meths->{$m}->{code}, rules => $route_meths->{$m}->{rules}, captures => \@captures });
+				push(@$routes, { method => $m, class => $route_meths->{$m}->{class}, prefix => $_->{prefix}, route => $r, code => $route_meths->{$m}->{code}, rules => $route_meths->{$m}->{rules}, captures => \@captures });
 			}
 		}
 	}
 
-	return @routes;
+	return $routes;
 }
 
 sub _negotiate_method {
-	my ($class, $method, @all_routes) = @_;
+	my ($class, $method, $routes) = @_;
 
-	my @routes;
-	foreach (@all_routes) {
-		next unless $class->method_name($_->{method}) eq $method || $_->{method} eq 'any';
-		push(@routes, $_);
-	}
-
-	return @routes;
+	return [grep { $class->method_name($_->{method}) eq $method || $_->{method} eq 'any' } @$routes];
 }
 
 sub _negotiate_receive_media {
-	my ($class, $c, @all_routes) = @_;
+	my ($class, $c, $all_routes) = @_;
 
-	return @all_routes unless my $ct = $c->content_type;
+	return $all_routes unless my $ct = $c->content_type;
 
 	# will hold all routes with acceptable receive types
-	my @routes;
+	my $routes = [];
 
 	# remove charset from content-type
 	if ($ct =~ m/^([^;]+)/) {
@@ -209,27 +199,27 @@ sub _negotiate_receive_media {
 
 	$c->log->info("I have received $ct");
 
-	ROUTE: foreach (@all_routes) {
+	ROUTE: foreach (@$all_routes) {
 		# does this route accept all media types?
 		unless (exists $_->{rules}->{accepts}) {
-			push(@routes, $_);
+			push(@$routes, $_);
 			next ROUTE;
 		}
 
 		# okay, it has, what are we accepting?
 		foreach my $accept (@{$_->{rules}->{accepts}}) {
 			if ($accept eq $ct) {
-				push(@routes, $_);
+				push(@$routes, $_);
 				next ROUTE;
 			}
 		}
 	}
 
-	return @routes;
+	return $routes;
 }
 
 sub _negotiate_return_media {
-	my ($class, $c, @all_routes) = @_;
+	my ($class, $c, $all_routes) = @_;
 
 	my @mimes;
 	foreach (@{$c->wanted_mimes}) {
@@ -238,9 +228,9 @@ sub _negotiate_return_media {
 	$c->log->info('Remote address wants '.join(', ', @mimes));
 
 	# will hold all routes with acceptable return types
-	my @routes;
+	my $routes = [];
 	
-	ROUTE: foreach (@all_routes) {
+	ROUTE: foreach (@$all_routes) {
 		# what media types does this route return?
 		my @have = exists $_->{rules}->{returns} ? 
 			@{$_->{rules}->{returns}} :
@@ -257,7 +247,7 @@ sub _negotiate_return_media {
 				# preference over this
 				if ($want->{mime} eq '*/*' && $want->{q} > 0) {
 					$_->{media} = $have[0];
-					push(@routes, $_);
+					push(@$routes, $_);
 					next ROUTE;
 				}
 				
@@ -266,19 +256,19 @@ sub _negotiate_return_media {
 					if ($want->{mime} eq $have) {
 						# we return a MIME type the client wants
 						$_->{media} = $want->{mime};
-						push(@routes, $_);
+						push(@$routes, $_);
 						next ROUTE;
 					}
 				}
 			}
 		} else {
 			$_->{media} = $have[0];
-			push(@routes, $_);
+			push(@$routes, $_);
 			next ROUTE;
 		}
 	}
 	
-	return @routes;
+	return $routes;
 }
 
 sub _negotiate_charset {
