@@ -27,9 +27,7 @@ Doesn't do anything in this module.
 
 =cut
 
-sub init {
-	1;
-}
+sub init { 1 }
 
 =head2 log( { level => $level, message => $msg } )
 

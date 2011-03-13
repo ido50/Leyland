@@ -172,9 +172,8 @@ sub BUILD {
 	}
 
 	# init localizer, if localization path given
-	if (exists $self->config->{locales}) {
-		$self->_set_localizer(Leyland::Localizer->new(path => $self->config->{locales}));
-	}
+	$self->_set_localizer(Leyland::Localizer->new(path => $self->config->{locales}))
+		if exists $self->config->{locales};
 
 	# require Module::Pluggable and load all views and controllers
 	# with it
@@ -281,11 +280,7 @@ sub _handle_exception {
 
 sub _default_config { { app => 'Leyland', views => ['Tenjin'] } }
 
-sub _autolog {
-	my ($log, $string) = @_;
-
-	$log->info($string);
-}
+sub _autolog { $_[0]->info($_[1]) }
 
 sub _initial_debug_info {
 	my $self = shift;
