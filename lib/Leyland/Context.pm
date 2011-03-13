@@ -3,17 +3,24 @@ package Leyland::Context;
 # ABSTRACT: The working environment of an HTTP request and Leyland response
 
 use Moose;
+use MooseX::NonMoose;
 use namespace::autoclean;
-use Plack::Request;
-use Plack::Response;
-use Leyland::Exception;
+
 use Carp;
-use Module::Load;
 use Data::Dumper;
+use Leyland::Exception;
+use Module::Load;
+use Text::SpanningTable;
+
+extends 'Plack::Request';
 
 =head1 NAME
 
 Leyland::Context - The working environment of an HTTP request and Leyland response
+
+=head1 EXTENDS
+
+L<Plack::Request>
 
 =head1 SYNOPSIS
 
@@ -27,17 +34,15 @@ Leyland::Context - The working environment of an HTTP request and Leyland respon
 
 =cut
 
-has 'leyland' => (is => 'ro', isa => 'Leyland', required => 1);
-
-has 'env' => (is => 'ro', isa => 'HashRef', required => 1);
+has 'app' => (is => 'ro', isa => 'Leyland', required => 1);
 
 has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
 
+has 'num' => (is => 'ro', isa => 'Int', default => 0);
+
 has 'views' => (is => 'ro', isa => 'ArrayRef', default => sub { [] });
 
-has 'req' => (is => 'ro', isa => 'Plack::Request', lazy_build => 1);
-
-has 'res' => (is => 'ro', isa => 'Plack::Response', default => sub { Plack::Response->new(200) });
+has 'res' => (is => 'ro', isa => 'Plack::Response', lazy_build => 1);
 
 has 'routes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_routes', writer => '_set_routes');
 
@@ -47,51 +52,33 @@ has 'want' => (is => 'ro', isa => 'Str', writer => '_set_want');
 
 has 'lang' => (is => 'ro', isa => 'Str', writer => 'set_lang');
 
-has 'current_route' => (is => 'rw', isa => 'Int', default => 0);
-
-has 'pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_pass');
+has 'current_route' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_current_route');
 
 has 'stash' => (is => 'ro', isa => 'HashRef', default => sub { {} });
 
 has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
 
-has 'session' => (is => 'ro', isa => 'HashRef', lazy_build => 1);
-
 has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user', clearer => 'clear_user');
 
-has 'died' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_died');
+has '_pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_pass_next');
 
-sub _build_req {
-	Plack::Request->new(shift->env);
-}
+sub leyland { shift->app }
 
-sub _build_session {
-	exists $_[0]->env->{'psgix.session'} ? $_[0]->env->{'psgix.session'} : {};
-}
+sub log { shift->app->log }
 
-sub log {
-	shift->leyland->log;
-}
+sub xml { shift->app->xml }
 
-sub xml {
-	shift->leyland->xml;
-}
+sub json { shift->app->json }
 
-sub json {
-	shift->leyland->json;
-}
-
-sub config {
-	shift->leyland->config;
-}
+sub config { shift->app->config }
 
 sub pass {
 	my $self = shift;
 
-	if ($self->routes->[$self->current_route + 1]) {
-		my $new_route = $self->current_route + 1;
-		$self->current_route($new_route);
-		$self->_pass(1);
+	# do not allow passing if we don't have routes to pass to
+	if ($self->current_route + 1 < scalar @{$self->routes}) {
+		$self->_set_current_route($self->current_route + 1);
+		$self->_set_pass_next(1);
 		return 1;
 	}
 
@@ -135,9 +122,7 @@ sub render {
 	return $self->views->[0]->render($tmpl_name, $context, $use_layout);
 }
 
-sub template {
-	shift->render(@_);
-}
+sub template { shift->render(@_) }
 
 sub structure {
 	my ($self, $obj, $want) = @_;
@@ -149,26 +134,6 @@ sub structure {
 	} else {
 		# just use Data::Dumper
 		return Dumper($obj);
-	}
-}
-
-sub _build_mimes {
-	my $self = shift;
-
-	my @wanted_mimes;
-
-	my $accept = $self->req->header('Accept');
-	if ($accept) {
-		my @mimes = split(/, ?/, $accept);
-		foreach (@mimes) {
-			my ($mime, $q) = split(/;q=/, $_);
-			$q = 1 unless defined $q;
-			push(@wanted_mimes, { mime => $mime, q => $q });
-		}
-		@wanted_mimes = reverse sort { $a->{q} <=> $b->{q} } @wanted_mimes;
-		return \@wanted_mimes;
-	} else {
-		return [];
 	}
 }
 
@@ -188,7 +153,12 @@ sub forward {
 		$self->log->info("Attempting to forward request to $path with any method.");
 	}
 
-	my @routes = $self->leyland->conneg->just_routes($self, { app_routes => $self->leyland->routes, path => $path, method => $method, internal => 1 });
+	my @routes = Leyland::Negotiator->just_routes($self, {
+		app_routes => $self->app->routes,
+		path => $path,
+		method => $method,
+		internal => 1
+	});
 
 	$self->exception({ code => 500, error => "Can't forward as no matching routes were found" }) unless scalar @routes;
 
@@ -203,15 +173,14 @@ sub forward {
 sub loc {
 	my ($self, $msg, @args) = @_;
 
-	return $self->leyland->localizer->loc($msg, $self->lang, @args);
+	return $self->app->localizer->loc($msg, $self->lang, @args);
 }
 
 sub exception {
 	my ($self, $err) = @_;
 
-	if ($err->{location} && ref $err->{location} =~ m/^URI/) {
-		$err->{location} = $err->{location}->as_string;
-	}
+	$err->{location} = $err->{location}->as_string
+		if $err->{location} && ref $err->{location} =~ m/^URI/;
 
 	Leyland::Exception->throw($err);
 }
@@ -219,7 +188,7 @@ sub exception {
 sub uri_for {
 	my ($self, $path, $args) = @_;
 
-	my $uri = $self->req->base;
+	my $uri = $self->base;
 	my $full_path = $uri->path . $path;
 	$full_path =~ s!^/!!; # remove starting slash
 	$uri->path($full_path);
@@ -228,9 +197,99 @@ sub uri_for {
 	return $uri;
 }
 
-sub finalize {
-	1;
+sub finalize { 1 } # meant to be overridden
+
+=head1 INTERNAL METHODS
+
+The following methods are only to be used internally.
+
+=cut
+
+sub _build_res { shift->new_response(200, [ 'Content-Type' => 'text/html' ]) }
+
+sub _build_mimes {
+	my $self = shift;
+
+	my @wanted_mimes;
+
+	my $accept = $self->header('Accept');
+	if ($accept) {
+		my @mimes = split(/, ?/, $accept);
+		foreach (@mimes) {
+			my ($mime, $q) = split(/;q=/, $_);
+			$q = 1 unless defined $q;
+			push(@wanted_mimes, { mime => $mime, q => $q });
+		}
+		@wanted_mimes = reverse sort { $a->{q} <=> $b->{q} } @wanted_mimes;
+		return \@wanted_mimes;
+	} else {
+		return [];
+	}
 }
+
+sub _respond {
+	my ($self, $status, $headers, $content) = @_;
+
+	$self->res->status($status) if $status && $status =~ m/^\d+$/;
+	$self->res->headers($headers) if $headers && ref $headers eq 'ARRAY';
+	if ($content) {
+		my $body = Encode::encode('UTF-8', $content);
+		$self->res->body($body);
+		$self->res->content_length(length($body));
+	}
+
+	$self->_log_response;
+
+	return $self->res->finalize;
+}
+
+sub _log_request {
+	my $self = shift;
+
+	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
+
+	$self->stash->{_tft} = $t;
+
+	$self->log->info($t->hr('top'));
+	$self->log->info($t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'));
+	$self->log->info($t->dhr);
+	foreach (split(/\n/, $t->row($self->num, $self->address, $self->method, $self->path, $self->content_type))) {
+		$self->log->info($_);
+	}
+	$self->log->info($t->hr);
+
+	$self->log->set_exec(sub { $_[0]->stash->{_tft}->row([5, $_[1]]) }, $self);
+}
+
+sub _log_response {
+	my $self = shift;
+
+	my $t = $self->stash->{_tft};
+	
+	$self->log->clear_exec();
+	$self->log->clear_args();
+
+	$self->log->info($t->hr);
+	foreach (split(/\n/, $t->row($self->num, $self->res->status.' '.$Leyland::CODES->{$self->res->status}->[0], [3, $self->res->content_type]))) {
+		$self->log->info($_);
+	}
+	$self->log->info($t->dhr);
+	$self->log->info($t->row('Response #', 'Status', [3, 'Content-Type']));
+	$self->log->info($t->hr('bottom'));
+	$self->log->info(' ');
+}
+
+sub BUILD { shift->_log_request }
+
+override 'content' => sub { Encode::decode('UTF-8', super()) };
+
+override 'session' => sub { super() || {} };
+
+override '_uri_base' => sub {
+	my $base = super();
+	$base .= '/' unless $base =~ m!/$!;
+	return $base;
+};
 
 =head1 AUTHOR
 

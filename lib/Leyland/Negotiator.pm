@@ -2,8 +2,9 @@ package Leyland::Negotiator;
 
 # ABSTRACT: Performs HTTP negotiations for Leyland requests
 
-use Moose;
-use namespace::autoclean;
+use strict;
+use warnings;
+
 use Carp;
 
 =head1 NAME
@@ -18,16 +19,62 @@ Leyland::Negotiator - Performs HTTP negotiations for Leyland requests
 
 =head1 CLASS METHODS
 
-=head1 OBJECT METHODS
-
 =cut
 
+sub negotiate {
+	my ($class, $c, $app_routes, $path) = @_;
+
+	# 1. CHARACTER SET NEGOTIATION
+	# --------------------------------------------------------------
+	# Leyland only supports UTF-8 character encodings, so let's check
+	# the client supports that. If not, let's return an error
+	$c->log->info('Negotiating character set.');
+	Leyland::Negotiator->_negotiate_charset($c)
+		|| $c->exception({ code => 400, error => "This server only supports the UTF-8 character set, unfortunately we are unable to fulfil your request." });
+
+	# 2. PATH NEGOTIATION
+	# --------------------------------------------------------------
+	# let's find all possible prefix/route combinations
+	# from the request path, and then find all routes matching
+	# the request path
+	$path ||= $c->path;
+	my @routes = $class->_negotiate_path($c, { app_routes => $app_routes, path => $path })
+		|| $c->exception({ code => 404 }) unless scalar @routes;
+
+	$c->log->info('Found '.scalar(@routes).' routes matching '.$path);
+
+	# 3. REQUEST METHOD NEGOTIATION
+	# --------------------------------------------------------------
+	# weed out routes that do not match request method
+	$c->log->info('Negotiating request method.');
+	@routes = $class->_negotiate_method($c->method, @routes)
+		|| $c->exception({ code => 405 }) unless scalar @routes;
+
+	# 4. RECEIVED CONTENT TYPE NEGOTIATION
+	# --------------------------------------------------------------
+	# weed out all routes that do not accept the media type that the
+	# client used for the request
+	$c->log->info('Negotiating media type received.');
+	@routes = $class->_negotiate_receive_media($c, @routes)
+		|| $c->exception({ code => 415 }) unless scalar @routes;
+
+	# 5. RETURNED CONTENT TYPE NEGOTIATION
+	# --------------------------------------------------------------
+	# weed out all routes that do not return any media type
+	# the client accepts
+	$c->log->info('Negotiating media type returned.');
+	@routes = $class->_negotiate_return_media($c, @routes)
+		|| $c->exception({ code => 406 }) unless scalar @routes;
+
+	return @routes;
+}
+
 sub find_options {
-	my ($self, $c, $app_routes) = @_;
+	my ($class, $c, $app_routes) = @_;
 
-	my @pref_routes = $self->prefs_and_routes($c->req->path);
+	my @pref_routes = $class->prefs_and_routes($c->path);
 
-	my @routes = $self->matching_routes($app_routes, \@pref_routes);
+	my @routes = $class->matching_routes($app_routes, \@pref_routes);
 
 	# have we found any matching routes?
 	$c->exception({ code => 404 }) unless scalar @routes;
@@ -36,70 +83,49 @@ sub find_options {
 	# these routes
 	my %meths = ( 'OPTIONS' => 1 );
 	foreach (@routes) {
-		$meths{$self->method_name($_->{method})} = 1;
+		$meths{$class->method_name($_->{method})} = 1;
 	}
 
 	return sort keys %meths;
 }
 
-sub just_routes {
-	my ($self, $c, $args) = @_;
+sub method_name {
+	my ($class, $meth) = @_;
 
-	$args->{path} ||= $c->req->path;
+	# replace 'del' with 'delete'
+	$meth = 'delete' if $meth eq 'del';
+
+	# return this in uppercase
+	return uc($meth);
+}
+
+sub _negotiate_path {
+	my ($class, $c, $args) = @_;
+
+	$args->{path} ||= $c->path;
 
 	# let's find all possible prefix/route combinations
 	# from the request path
-	my @pref_routes = $self->prefs_and_routes($args->{path});
+	my @pref_routes = $class->_prefs_and_routes($args->{path});
 
 	# find all routes matching the request path
-	my @routes = $self->matching_routes($args->{app_routes}, \@pref_routes, $args->{internal});
+	my @routes = $class->_matching_routes($args->{app_routes}, \@pref_routes, $args->{internal});
 
 	if ($args->{method}) {
-		return $self->negotiate_method($args->{method}, @routes);
+		return $class->_negotiate_method($args->{method}, @routes);
 	} else {
 		return @routes;
 	}
 }
 
-sub find_routes {
-	my ($self, $c, $app_routes, $path) = @_;
+=head1 INTERNAL METHODS
 
-	$path ||= $c->req->path;
+The following methods are only to be used internally.
 
-	# let's find all possible prefix/route combinations
-	# from the request path, and then find all routes matching
-	# the request path
-	my @routes = $self->just_routes($c, { app_routes => $app_routes, path => $path });
+=cut
 
-	$c->log->info('Found '.scalar(@routes).' routes matching '.$path);
-
-	# weed out routes that do not match request method
-	$c->log->info('Negotiating request method.');
-	@routes = $self->negotiate_method($c->req->method, @routes);
-
-	# have we found anything? if not, return 404 error
-	$c->exception({ code => 404 }) unless scalar @routes;
-
-	# weed out all routes that do not accept the media type that the
-	# client used for the request
-	$c->log->info('Negotiating media type received.');
-	@routes = $self->negotiate_receive_media($c, @routes);
-
-	$c->exception({ code => 415 }) unless scalar @routes;
-
-	# weed out all routes that do not return any media type
-	# the client accepts
-	$c->log->info('Negotiating media type returned.');
-	@routes = $self->negotiate_return_media($c, @routes);
-
-	# do we have anything left? if not, return 406 error
-	$c->exception({ code => 406 }) unless scalar @routes;
-
-	return @routes;
-}
-
-sub prefs_and_routes {
-	my ($self, $path) = @_;
+sub _prefs_and_routes {
+	my ($class, $path) = @_;
 
 	my @pref_routes = ({ prefix => '', route => $path });
 	my ($prefix) = ($path =~ m!^(/[^/]+)!);
@@ -118,8 +144,8 @@ sub prefs_and_routes {
 	return @pref_routes;
 }
 
-sub matching_routes {
-	my ($self, $app_routes, $pref_routes, $internal) = @_;
+sub _matching_routes {
+	my ($class, $app_routes, $pref_routes, $internal) = @_;
 
 	my @routes;
 	foreach (@$pref_routes) {
@@ -156,22 +182,22 @@ sub matching_routes {
 	return @routes;
 }
 
-sub negotiate_method {
-	my ($self, $method, @all_routes) = @_;
+sub _negotiate_method {
+	my ($class, $method, @all_routes) = @_;
 
 	my @routes;
 	foreach (@all_routes) {
-		next unless $self->method_name($_->{method}) eq $method || $_->{method} eq 'any';
+		next unless $class->method_name($_->{method}) eq $method || $_->{method} eq 'any';
 		push(@routes, $_);
 	}
 
 	return @routes;
 }
 
-sub negotiate_receive_media {
-	my ($self, $c, @all_routes) = @_;
+sub _negotiate_receive_media {
+	my ($class, $c, @all_routes) = @_;
 
-	return @all_routes unless my $ct = $c->req->content_type;
+	return @all_routes unless my $ct = $c->content_type;
 
 	# will hold all routes with acceptable receive types
 	my @routes;
@@ -202,8 +228,8 @@ sub negotiate_receive_media {
 	return @routes;
 }
 
-sub negotiate_return_media {
-	my ($self, $c, @all_routes) = @_;
+sub _negotiate_return_media {
+	my ($class, $c, @all_routes) = @_;
 
 	my @mimes;
 	foreach (@{$c->wanted_mimes}) {
@@ -255,31 +281,19 @@ sub negotiate_return_media {
 	return @routes;
 }
 
-sub negotiate_charset {
-	my ($self, $c) = @_;
+sub _negotiate_charset {
+	my ($class, $c) = @_;
 
-	if ($c->req->header('Accept-Charset')) {
-		my @chars = split(/,/, $c->req->header('Accept-Charset'));
+	if ($c->header('Accept-Charset')) {
+		my @chars = split(/,/, $c->header('Accept-Charset'));
 		foreach (@chars) {
 			my ($charset, $pref) = split(/;q=/, $_);
 			next unless defined $pref;
-			if ($charset =~ m/utf-?8/i && $pref == 0) {
-				croak "This server only supports the UTF-8 character set, unfortunately we are unable to fulfil your request.";
-			}
+			return if $charset =~ m/utf-?8/i && $pref == 0;
 		}
 	}
 
 	return 1;
-}
-
-sub method_name {
-	my ($self, $meth) = @_;
-
-	# replace 'del' with 'delete'
-	$meth = 'delete' if $meth eq 'del';
-
-	# return this in uppercase
-	return uc($meth);
 }
 
 =head1 AUTHOR
@@ -332,4 +346,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;

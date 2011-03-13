@@ -6,18 +6,18 @@ $Leyland::VERSION = 0.1;
 
 use Moose;
 use namespace::autoclean;
-use Encode;
-use Leyland::Negotiator;
-use Leyland::Localizer;
-use JSON::Any;
-use XML::TreePP;
-use File::Util;
+
+use Carp;
 use Data::Dumper;
+use Encode;
+use JSON::Any;
+use Leyland::Localizer;
+use Leyland::Negotiator;
 use Module::Load;
+use Text::SpanningTable;
 use Tie::IxHash;
 use Try::Tiny;
-use Text::SpanningTable;
-use Carp;
+use XML::TreePP;
 
 =head1 NAME
 
@@ -45,19 +45,86 @@ has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer 
 
 has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
 
-has 'futil' => (is => 'ro', isa => 'File::Util', default => sub { File::Util->new });
-
 has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new(utf8 => 1) }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
 
 has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; });
-
-has 'conneg' => (is => 'ro', isa => 'Leyland::Negotiator', default => sub { Leyland::Negotiator->new });
 
 has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_req_counter');
 
 has 'context_class' => (is => 'ro', isa => 'Str', default => 'Leyland::Context');
 
 has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
+
+sub setup { 1 } # meant to be overridden
+
+sub handle {
+	my ($self, $env) = @_;
+
+	# increment the request counter
+	$self->_set_req_counter($self->req_counter + 1);
+
+	# create the context object
+	my $c = $self->context_class->new(
+		app => $self,
+		env => $env,
+		num => $self->req_counter
+	);
+
+	# does the request path have an "unnecessary" trailing slash?
+	# if so, remove it and redirect to the resulting URI
+	if ($c->path ne '/' && $c->path =~ m!/$!) {
+		my $newpath = $`;
+		my $uri = $c->uri;
+		$uri->path($newpath);
+		
+		$c->res->redirect($uri, 301);
+		return $c->_respond;
+	}
+
+	# is this an OPTIONS request?
+	if ($c->method eq 'OPTIONS') {
+		# get all available methods by using Leyland::Negotiator
+		# and return a 204 No Content response
+		$c->log->info('Finding supported methods for requested path.');
+		return $c->_respond(204, ['Allow' => join(', ', Leyland::Negotiator->find_options($c, $self->routes))]);
+	} else {
+		# negotiate for routes and invoke the first matching route (if any).
+		# handle route passes and return the final output after UTF-8 encoding.
+		# if at any point an expception is raised, handle it.
+		return try {
+			# get routes
+			$c->log->info('Searching matching routes.');
+			$c->_set_routes([Leyland::Negotiator->negotiate($c, $self->routes)]);
+
+			# invoke first route
+			$c->log->info('Invoking first matching route.');
+			my $ret = $self->_invoke_route($c);
+
+			# are we passing to the next matching route?
+			# to prevent infinite loops, limit passing to no more than 100 times
+			while ($c->_pass_next && $c->current_route < 100) {
+				# we need to pass to the next matching route.
+				# first, let's erase the pass flag from the context
+				# so we don't try to do this infinitely
+				$c->_pass(0);
+				# no let's invoke the route
+				$ret = $self->_invoke_route($c);
+			}
+
+			$c->finalize(\$ret);
+			
+			$c->_respond(undef, undef, $ret);
+		} catch {
+			$self->_handle_exception($c, $_);
+		};
+	}
+}
+
+=head1 INTERNAL METHODS
+
+The following methods are only to be used internally.
+
+=cut
 
 around BUILDARGS => sub {
 	my ($orig, $class, %opts) = @_;
@@ -168,99 +235,10 @@ sub BUILD {
 	$self->_initial_debug_info;
 }
 
-sub handle {
-	my ($self, $env) = @_;
-
-	# create the context object
-	my %params = ( leyland => $self, env => $env );
-	$params{views} = $self->views if $self->has_views;
-	my $c = $self->context_class->new(%params);
-
-	# does the request path have an "unnecessary" trailing slash?
-	# if so, remove it and redirect to the new path
-	if ($c->req->path ne '/' && $c->req->path =~ m!/$!) {
-		my $newpath = $`;
-		$c->res->content_type('text/html');
-		my $uri = $c->req->uri;
-		$uri->path($newpath);
-		
-		$c->res->redirect($uri, 301);
-		return $c->res->finalize;
-	}
-
-	# log this request
-	$self->_log_request($c);
-
-	# is this an OPTIONS request?
-	if ($c->req->method eq 'OPTIONS') {
-		$c->log->info('Finding supported methods for requested path.');
-		my @options = $self->conneg->find_options($c, $self->routes);
-		$c->res->status(204); # 204 No Content
-		$c->res->header('Allow' => join(', ', @options));
-		return $c->res->finalize;
-	}
-
-	# Leyland only supports UTF-8 character encodings, so let's check
-	# the client supports that. If not, let's return an error
-	$c->log->info('Negotiating character set.');
-	$self->conneg->negotiate_charset($c);
-
-	# find matching routes (will issue an error if none found or none
-	# return client's acceptable media types)
-	$c->log->info('Searching matching routes.');
-	my @routes = try {
-		$self->conneg->find_routes($c, $self->routes);
-	} catch {
-		($self->_handle_exception($c, $_));
-	};
-	return $routes[0] if $c->died;
-
-	$c->_set_routes(\@routes);
-	
-	# invoke the first matching route
-	$c->log->info('Invoking first matching route.');
-	my $i = 0;
-	my $ret = try {
-		$self->_invoke_route($c, $i);
-	} catch {
-		$self->_handle_exception($c, $_);
-	};
-	return $ret if $c->died;
-
-	while ($c->pass_next && $i < scalar @{$c->routes} && $i < 100) { # $i is also used to prevent infinite loops
-		# we need to pass to the next matching route.
-		# first, let's erase the pass flag from the context
-		# so we don't try to do this infinitely
-		$c->_pass(0);
-		
-		$ret = try {
-			$self->_invoke_route($c, $i);
-		} catch {
-			$self->_handle_exception($c, $_);
-		};
-		return $ret if $c->died;
-		
-		$i++;
-	}
-
-	$c->finalize(\$ret);
-
-	my $body = Encode::encode('UTF-8', $ret);
-	$c->res->body($body);
-	$c->res->content_length(length($body));
-
-	$self->_log_response($c);
-
-	return $c->res->finalize;
-}
-
-sub setup {
-	# meant to be overriden
-	1;
-}
-
 sub _invoke_route {
-	my ($self, $c, $i) = @_;
+	my ($self, $c) = @_;
+
+	my $i = $c->current_route;
 
 	$c->_set_controller($c->routes->[$i]->{class});
 	
@@ -274,7 +252,11 @@ sub _invoke_route {
 
 	# invoke the route itself
 	$c->_set_want($c->routes->[$i]->{media});
-	my $ret = $self->_deserialize($c, $c->routes->[$i]->{code}->($c->controller, $c, @{$c->routes->[$i]->{captures}}), $c->routes->[$i]->{media});
+	my $ret = $self->_deserialize(
+		$c,
+		$c->routes->[$i]->{code}->($c->controller, $c, @{$c->routes->[$i]->{captures}}),
+		$c->routes->[$i]->{media}
+	);
 
 	# invoke the post_route subroutine
 	$c->controller->post_route($c, \$ret);
@@ -284,8 +266,6 @@ sub _invoke_route {
 
 sub _handle_exception {
 	my ($self, $c, $exp) = @_;
-	
-	$c->_set_died(1);
 
 	# have we caught a Leyland::Exception object?
 	unless (blessed $exp && $exp->isa('Leyland::Exception')) {
@@ -413,12 +393,7 @@ sub _route_parents {
 	return @parents;
 }
 
-sub _default_config {
-	{
-		app => 'Leyland',
-		views => ['Tenjin'],
-	}
-}
+sub _default_config { { app => 'Leyland', views => ['Tenjin'] } }
 
 sub _autolog {
 	my ($log, $string) = @_;
@@ -481,45 +456,6 @@ sub _initial_debug_info {
 	}
 
 	$self->log->info(' ');
-}
-
-sub _log_request {
-	my ($self, $c) = @_;
-
-	# increment the request counter
-	$self->_set_req_counter($self->req_counter + 1);
-
-	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
-
-	$c->stash->{_tft} = $t;
-
-	$c->log->info($t->hr('top'));
-	$c->log->info($t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'));
-	$c->log->info($t->dhr);
-	foreach (split(/\n/, $t->row($self->req_counter, $c->req->address, $c->req->method, $c->req->path, $c->req->header('Content-Type')))) {
-		$c->log->info($_);
-	}
-	$c->log->info($t->hr);
-
-	$c->log->set_exec(sub { $_[0]->stash->{_tft}->row([5, $_[1]]) }, $c);
-}
-
-sub _log_response {
-	my ($self, $c) = @_;
-
-	my $t = $c->stash->{_tft};
-	
-	$c->log->clear_exec();
-	$c->log->clear_args();
-
-	$c->log->info($t->hr);
-	foreach (split(/\n/, $t->row($self->req_counter, $c->res->status.' '.$Leyland::CODES->{$c->res->status}->[0], [3, $c->res->header('Content-Type')]))) {
-		$c->log->info($_);
-	}
-	$c->log->info($t->dhr);
-	$c->log->info($t->row('Response #', 'Status', [3, 'Content-Type']));
-	$c->log->info($t->hr('bottom'));
-	$c->log->info(' ');
 }
 
 $Leyland::CODES = {
