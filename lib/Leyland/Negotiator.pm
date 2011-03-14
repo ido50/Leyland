@@ -98,6 +98,12 @@ sub method_name {
 	return uc($meth);
 }
 
+=head1 INTERNAL METHODS
+
+The following methods are only to be used internally.
+
+=cut
+
 sub _negotiate_path {
 	my ($class, $c, $args) = @_;
 
@@ -113,12 +119,6 @@ sub _negotiate_path {
 		return $routes;
 	}
 }
-
-=head1 INTERNAL METHODS
-
-The following methods are only to be used internally.
-
-=cut
 
 sub _prefs_and_routes {
 	my ($class, $path) = @_;

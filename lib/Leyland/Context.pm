@@ -12,6 +12,7 @@ use JSON::Any;
 use Leyland::Exception;
 use Module::Load;
 use Text::SpanningTable;
+use Try::Tiny;
 use XML::TreePP;
 
 extends 'Plack::Request';
@@ -76,20 +77,24 @@ sub config { shift->app->config }
 
 sub views { shift->app->views }
 
-sub params { shift->parameters }
+sub params { shift->parameters->as_hashref_mixed }
 
 sub data {
 	my $self = shift;
 
-	return unless $self->content_type;
+	return unless $self->content_type && $self->content;
 
 	return $self->_data if $self->_has_data;
 
-	if ($self->content_type eq 'application/json') {
-		$self->_set_data($self->json->from_json($self->content));
+	if ($self->content_type =~ m!^application/json!) {
+		my $data = try { $self->json->from_json($self->content) } catch { undef };
+		return unless $data;
+		$self->_set_data($data);
 		return $self->_data;
-	} elsif ($self->content_type eq 'application/atom+xml' || $self->content_type eq 'application/xml') {
-		$self->_set_data($self->xml->parse($self->content));
+	} elsif ($self->content_type =~ m!^application/(atom+)?xml!) {
+		my $data = try { $self->xml->parse($self->content) } catch { undef };
+		return unless $data;
+		$self->_set_data($data);
 		return $self->_data;
 	}
 
@@ -177,21 +182,21 @@ sub forward {
 		$self->log->info("Attempting to forward request to $path with any method.");
 	}
 
-	my @routes = Leyland::Negotiator->just_routes($self, {
+	my $routes = Leyland::Negotiator->_negotiate_path($self, {
 		app_routes => $self->app->routes,
 		path => $path,
 		method => $method,
 		internal => 1
 	});
 
-	$self->exception({ code => 500, error => "Can't forward as no matching routes were found" }) unless scalar @routes;
+	$self->exception({ code => 500, error => "Can't forward as no matching routes were found" }) unless scalar @$routes;
 
-	my @pass = ($routes[0]->{class}, $self);
-	push(@pass, @{$routes[0]->{captures}}) if scalar @{$routes[0]->{captures}};
+	my @pass = ($routes->[0]->{class}, $self);
+	push(@pass, @{$routes->[0]->{captures}}) if scalar @{$routes->[0]->{captures}};
 	push(@pass, @_) if scalar @_;
 
 	# just invoke the first matching route
-	return $routes[0]->{code}->(@pass);
+	return $routes->[0]->{code}->(@pass);
 }
 
 sub loc {
@@ -396,9 +401,61 @@ sub FOREIGNBUILDARGS {
 
 sub BUILD { shift->_log_request }
 
-override 'content' => sub { Encode::decode('UTF-8', super()) };
+override 'content' => sub { $_[0]->env->{'leyland.request.content'} ||= Encode::decode('UTF-8', super()) };
 
 override 'session' => sub { super() || {} };
+
+override 'query_parameters' => sub {
+	my $self = shift;
+
+	if ($self->env->{'leyland.request.query'}) {
+		return $self->env->{'leyland.request.query'};
+	} else {
+		my $params = super()->as_hashref_mixed;
+		foreach (keys %$params) {
+			if (ref $params->{$_}) { # implied: ref $params->{$_} eq 'ARRAY'
+				my $arr = [];
+				foreach my $val (@{$params->{$_}}) {
+					push(@$arr, Encode::decode('UTF-8', $val));
+				}
+				$params->{$_} = $arr;
+			} else {
+				$params->{$_} = Encode::decode('UTF-8', $params->{$_});
+			}
+		}
+		return $self->env->{'leyland.request.query'} = Hash::MultiValue->from_mixed($params);
+	}
+};
+
+override 'body_parameters' => sub {
+	my $self = shift;
+
+	$self->_parse_request_body
+		unless $self->env->{'leyland.request.body'};
+
+	return $self->env->{'leyland.request.body'};
+};
+
+after '_parse_request_body' => sub {
+	my $self = shift;
+
+	# decode the body parameters
+	if ($self->env->{'plack.request.body'} && !$self->env->{'leyland.request.body'}) {
+		my $body = $self->env->{'plack.request.body'}->as_hashref_mixed;
+		foreach (keys %$body) {
+			if (ref $body->{$_}) { # implied: ref $body->{$_} eq 'ARRAY'
+				my $arr = [];
+				foreach my $val (@{$body->{$_}}) {
+					push(@$arr, Encode::decode('UTF-8', $val));
+				}
+				$body->{$_} = $arr;
+			} else {
+				$body->{$_} = Encode::decode('UTF-8', $body->{$_});
+			}
+		}
+		$self->env->{'leyland.request.body'} = Hash::MultiValue->from_mixed($body);
+	}
+};
 
 override '_uri_base' => sub {
 	my $base = super();
