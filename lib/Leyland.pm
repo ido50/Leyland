@@ -266,7 +266,7 @@ sub _handle_exception {
 			$exp->code,
 			{ 'Content-Type' => $_->{mime}.'; charset=UTF-8' },
 			$c->_serialize($exp->hash, $_->{mime})
-		) if $_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml';
+		) if $_->{mime} eq 'text/html' || $_->{mime} eq 'application/xhtml+xml' || $_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml';
 	}
 
 	# We do not support none of the MIME types the client wants,

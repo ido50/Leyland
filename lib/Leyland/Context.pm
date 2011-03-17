@@ -161,8 +161,8 @@ sub structure {
 	} elsif ($want eq 'application/atom+xml' || $want eq 'application/xml') {
 		return $self->xml->write($obj);
 	} else {
-		# just use Data::Dumper
-		return Dumper($obj);
+		# return json anyway (temporary)
+		return $self->json->to_json($obj);
 	}
 }
 
@@ -249,7 +249,23 @@ sub _build_mimes {
 			$q = 1 unless defined $q;
 			push(@wanted_mimes, { mime => $mime, q => $q });
 		}
-		@wanted_mimes = reverse sort { $a->{q} <=> $b->{q} } @wanted_mimes;
+		@wanted_mimes = reverse sort {
+			if ($a->{q} > $b->{q}) {
+				return 1;
+			} elsif ($b->{q} > $a->{q}) {
+				return -1;
+			} elsif ($a->{mime} eq 'text/html' && $b->{mime} ne 'text/html') {
+				return 1;
+			} elsif ($b->{mime} eq 'text/html' && $a->{mime} ne 'text/html') {
+				return -1;
+			} elsif ($a->{mime} eq 'application/xhtml+xml' && $b->{mime} ne 'application/xhtml+xml') {
+				return 1;
+			} elsif ($b->{mime} eq 'application/xhtml+xml' && $a->{mime} ne 'application/xhtml+xml') {
+				return -1;
+			} else {
+				return 0;
+			}
+		} @wanted_mimes;
 		return \@wanted_mimes;
 	} else {
 		return [];
