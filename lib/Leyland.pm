@@ -2,8 +2,6 @@ package Leyland;
 
 # ABSTRACT: A Plack-based application framework that makes no sense
 
-$Leyland::VERSION = 0.1;
-
 use Moose;
 use namespace::autoclean;
 
@@ -16,6 +14,8 @@ use Module::Load;
 use Text::SpanningTable;
 use Tie::IxHash;
 use Try::Tiny;
+
+use version 0.77; our $VERSION = version-declare("v0.0.1");
 
 =head1 NAME
 
