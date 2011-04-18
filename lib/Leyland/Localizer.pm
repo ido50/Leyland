@@ -1,6 +1,6 @@
 package Leyland::Localizer;
 
-# ABSTRACT: Wrapper for the Wolowitz localization system for Leyland apps
+# ABSTRACT: Wrapper for the Locale::Wolowitz localization system for Leyland apps
 
 use Moose;
 use namespace::autoclean;
@@ -12,13 +12,52 @@ Leyland::Localizer - Wrapper for the Locale::Wolowitz localization system for Le
 
 =head1 SYNOPSIS
 
+	# in app.psgi
+	my $config = {
+		...
+		locales => '/path/to/myapp/locales',
+		...
+	};
+
+	# in your controllers
+	$c->set_lang('es'); # use Spanish when responding, possibly because that's what the client wants
+	$c->loc('Hello %1', $c->params->{name});
+
+	# in your views (assuming you're using L<Tenjin>):
+	<h1>[== $c->loc('Hello %1', $c->params->{name}) =]</h1>
+
 =head1 DESCRIPTION
+
+This module provides Leyland applications with simple localization capabilities,
+using L<Locale::Wolowitz>. This does not mean localizing your application
+to the locale of the computer/server on which it is running, but localizing
+your HTTP responses according to your application's client's wishes.
+
+If, for example, your application is a website provided in two or more
+languages, this module will provide your application with Wolowitz's
+C<loc()> method, for translating strings into a certain language.
+
+See the L<Leyland::Manual::Localization> for more information.
 
 =head1 ATTRIBUTES
 
-=head1 CLASS METHODS
+=head2 path
+
+The path of the directory in which L<Locale::Wolowitz> translation files
+reside. Can be a relative path. This attribute will come from the "locales"
+config option in C<app.psgi>.
+
+=head2 w
+
+The L<Locale::Wolowitz> object used for localization.
 
 =head1 OBJECT METHODS
+
+=head2 loc( $string, $language, [ @replacements ] )
+
+Translates C<$string> into C<$language>, possibly performing some replacements.
+This is just a shortcut for C<< Locale::Wolowitz->loc() >>, so check out
+L<Locale::Wolowitz> for more information.
 
 =cut
 
@@ -26,12 +65,24 @@ has 'path' => (is => 'ro', isa => 'Str', required => 1);
 
 has 'w' => (is => 'ro', isa => 'Locale::Wolowitz', writer => '_set_w');
 
-sub BUILD {
-	$_[0]->_set_w(Locale::Wolowitz->new($_[0]->path));
-}
-
 sub loc {
 	shift->w->loc(@_);
+}
+
+=head1 INTERNAL METHODS
+
+The following methods are only to be used internally.
+
+=head2 BUILD()
+
+Automatically called by L<Moose> after initializing an instance of this class,
+this method creates a new L<Locale::Wolowitz> object and saves it as the
+"w" attribute.
+
+=cut
+
+sub BUILD {
+	$_[0]->_set_w(Locale::Wolowitz->new($_[0]->path));
 }
 
 =head1 AUTHOR
@@ -74,7 +125,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

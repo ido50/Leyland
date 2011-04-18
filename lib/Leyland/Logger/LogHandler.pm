@@ -1,5 +1,7 @@
 package Leyland::Logger::LogHandler;
 
+# ABSTRACT: Use Log::Handler as your app's logger
+
 use Moose;
 use namespace::autoclean;
 use Log::Handler;
@@ -10,7 +12,41 @@ Leyland::Logger::LogHandler - Use Log::Handler as your app's logger
 
 =head1 SYNOPSIS
 
+	# in the config hash-ref of app.psgi:
+	my $config = {
+		...
+		logger => {
+			class => 'LogHandler',
+			opts => {
+				outputs => [
+					file => {
+						filename => "myapp.$ENV{PLACK_ENV}.log",
+						minlevel => 0,
+						maxlevel => 8,
+						utf8 => 1,
+					},
+					screen => {
+						log_to   => "STDERR",
+						minlevel => 0,
+						maxlevel => 8,
+					},
+				]
+			}
+		},
+		...
+	};
+
 =head1 DESCRIPTION
+
+This module provides L<Leyland> applications with logging capabilities
+from L<Log::Handler>. To use Log::Handler for logging, your application's
+config hash-ref (defined in C<app.psgi>) should have a "logger" key with
+information on how to create the logger. Look at the L</"SYNOPSIS"> for
+an example.
+
+=head1 CONSUMES
+
+L<Leyland::Logger>
 
 =head1 ATTRIBUTES
 
@@ -24,13 +60,11 @@ has 'obj' => (is => 'ro', isa => 'Log::Handler', writer => '_set_obj');
 
 with 'Leyland::Logger';
 
-=head1 CLASS METHODS
-
 =head1 OBJECT METHODS
 
 =head2 init( \%opts )
 
-Initializes the Log::Dispatch object with options passed from the app's
+Initializes the Log::Handler object with options passed from the app's
 config hash.
 
 =cut
@@ -96,7 +130,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

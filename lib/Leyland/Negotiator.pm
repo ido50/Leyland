@@ -13,11 +13,57 @@ Leyland::Negotiator - Performs HTTP negotiations for Leyland requests
 
 =head1 SYNOPSIS
 
+	# used internally
+
 =head1 DESCRIPTION
 
-=head1 ATTRIBUTES
+This module performs HTTP negotiations for L<Leyland> requests. When a request
+is handled by a Leyland application, it is first negotiated by this module
+to make sure it can be handled, and to decide on how to handle it.
+
+The following negotiations are performed:
+
+=over
+
+=item 1. Character set negotiation - Leyland only supports UTF-8, so if
+the request defines a different character set, a 400 Bad Request error
+is thrown.
+
+=item 2. Path negotiation - The request path is compared against the application's
+routes, and a list of routes is created. If none are found, a 404 Not Found
+error is thrown.
+
+=item 3. Request method negotiation - The list of routes is filtered
+by the request method (GET, POST, etc.), so only routes of this method
+remain. If none remain, a 405 Method Not Allowed error is thrown.
+
+=item 4. Received content type negotiation - The list of routes is filtered
+by the request content type (text/html for example), if it has any, so only
+routes that accept this media type remain. If none remain, a 415 Unsupported
+Media Type error is thrown.
+
+=item 5. Returned content type negotiation - The list of routes is filtered
+by the request accepted media types (residing in the Accept HTTP header),
+if defined, so only routes that return a media type accepted by the client
+remain. If none remain, a 406 Not Acceptable error is thrown.
+
+=back
+
+There's one thing this method doesn't perform, and that's language negotiation.
+Since proper HTTP language negotiation is rare (and difficult to implement),
+you are expect to perform that yourself (only if you wish, of course).
+For that, L<Leyland::Localizer> is provided.
+
+This module also finds routes that match a path when an HTTP OPTIONS request
+is received.
 
 =head1 CLASS METHODS
+
+=head2 negotiate( $c, $app_routes, $path )
+
+Performs a series of HTTP negotiations on the request and returns matching
+routes. If none are found, an error is thrown. See L</"DESCRIPTION"> for
+more information.
 
 =cut
 
@@ -70,6 +116,13 @@ sub negotiate {
 	return $routes;
 }
 
+=head2 find_options( $c, $app_routes )
+
+Finds all routes that match a certain path when an HTTP OPTIONS request
+is received.
+
+=cut
+
 sub find_options {
 	my ($class, $c, $app_routes) = @_;
 
@@ -88,6 +141,14 @@ sub find_options {
 	return sort keys %meths;
 }
 
+=head2 method_name( $meth )
+
+Receives the name of a Leyland-style HTTP method (like 'get', 'post',
+'put' or 'del') and returns the correct HTTP name of it (like 'GET', 'POST',
+'PUT' or 'DELETE').
+
+=cut
+
 sub method_name {
 	my ($class, $meth) = @_;
 
@@ -101,6 +162,8 @@ sub method_name {
 =head1 INTERNAL METHODS
 
 The following methods are only to be used internally.
+
+=head2 _negotiate_path( $c, \%args )
 
 =cut
 
@@ -119,6 +182,10 @@ sub _negotiate_path {
 		return $routes;
 	}
 }
+
+=head2 _prefs_and_routes( $path )
+
+=cut
 
 sub _prefs_and_routes {
 	my ($class, $path) = @_;
@@ -139,6 +206,10 @@ sub _prefs_and_routes {
 
 	return $pref_routes;
 }
+
+=head2 _matching_routes( $app_routes, $pref_routes, $internal )
+
+=cut
 
 sub _matching_routes {
 	my ($class, $app_routes, $pref_routes, $internal) = @_;
@@ -178,11 +249,19 @@ sub _matching_routes {
 	return $routes;
 }
 
+=head2 _negotiate_method( $method, $routes )
+
+=cut
+
 sub _negotiate_method {
 	my ($class, $method, $routes) = @_;
 
 	return [grep { $class->method_name($_->{method}) eq $method || $_->{method} eq 'any' } @$routes];
 }
+
+=head2 _negotiate_receive_media( $c, $all_routes )
+
+=cut
 
 sub _negotiate_receive_media {
 	my ($class, $c, $all_routes) = @_;
@@ -217,6 +296,10 @@ sub _negotiate_receive_media {
 
 	return $routes;
 }
+
+=head2 _negotiate_return_media( $c, $all_routes )
+
+=cut
 
 sub _negotiate_return_media {
 	my ($class, $c, $all_routes) = @_;
@@ -270,6 +353,10 @@ sub _negotiate_return_media {
 	
 	return $routes;
 }
+
+=head2 _negotiate_charset( $c )
+
+=cut
 
 sub _negotiate_charset {
 	my ($class, $c) = @_;
@@ -326,7 +413,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

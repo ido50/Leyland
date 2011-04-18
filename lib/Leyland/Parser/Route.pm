@@ -7,23 +7,30 @@ use strict;
 use base 'Devel::Declare::Parser';
 use Devel::Declare::Interface;
 
+Devel::Declare::Interface::register_parser(__PACKAGE__);
+
 =head1 NAME
 
 Leyland::Parser::Route - Parses route definitions in Leyland controllers
 
 =head1 SYNOPSIS
 
+	# see Leyland::Parser for information
+
 =head1 DESCRIPTION
 
-=head1 ATTRIBUTES
+This module defines parsers for Leyland's sweet syntax for creating routes
+and controller prefixes.
 
-=head1 CLASS METHODS
+=head1 EXTENDS
+
+L<Devel::Declare::Parser>
 
 =head1 OBJECT METHODS
 
-=cut
+=head2 rewrite()
 
-Devel::Declare::Interface::register_parser(__PACKAGE__);
+=cut
 
 sub rewrite {
 	my $self = shift;
@@ -52,11 +59,21 @@ sub rewrite {
 	$self->new_parts(\@new_parts);
 }
 
+=head2 inject()
+
+Provides Leyland routes with C<$self> and C<$c> automatically.
+
+=cut
+
 sub inject {('my ($self, $c) = (shift, shift);')}
 
 =head1 AUTHOR
 
 Ido Perlmuter, C<< <ido at ido50.net> >>
+
+=head1 ACKNOWLEDGMENTS
+
+Paul Driver, author of L<Flea>, from which I have learned how to do this.
 
 =head1 BUGS
 
@@ -94,7 +111,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

@@ -1,5 +1,7 @@
 package Leyland::Logger::LogDispatch;
 
+# ABSTRACT: Use Log::Dispatch as your app's logger
+
 use Moose;
 use namespace::autoclean;
 use Log::Dispatch;
@@ -10,7 +12,32 @@ Leyland::Logger::LogDispatch - Use Log::Dispatch as your app's logger
 
 =head1 SYNOPSIS
 
+	# in the config hash-ref of app.psgi:
+	my $config = {
+		...
+		logger => {
+			class => 'LogDispatch',
+			opts => {
+				outputs => [
+					[ 'File',   min_level => 'debug', filename => "myapp.$ENV{PLACK_ENV}.log", newline => 1 ],
+					[ 'Screen', min_level => 'warning', newline => 1 ],
+				],
+			}
+		},
+		...
+	};
+
 =head1 DESCRIPTION
+
+This module provides L<Leyland> applications with logging capabilities
+from L<Log::Dispatch>. To use Log::Dispatch for logging, your application's
+config hash-ref (defined in C<app.psgi>) should have a "logger" key with
+information on how to create the logger. Look at the L</"SYNOPSIS"> for
+an example.
+
+=head1 CONSUMES
+
+L<Leyland::Logger>
 
 =head1 ATTRIBUTES
 
@@ -23,8 +50,6 @@ The L<Log::Dispatch> object used.
 has 'obj' => (is => 'ro', isa => 'Log::Dispatch', writer => '_set_obj');
 
 with 'Leyland::Logger';
-
-=head1 CLASS METHODS
 
 =head1 OBJECT METHODS
 
@@ -93,7 +118,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

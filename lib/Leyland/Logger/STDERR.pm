@@ -1,5 +1,7 @@
 package Leyland::Logger::STDERR;
 
+# ABSTRACT: Default logger, logs to STDERR
+
 use Moose;
 use namespace::autoclean;
 
@@ -11,13 +13,22 @@ Leyland::Logger::STDERR - Default logger, logs to STDERR
 
 =head1 SYNOPSIS
 
+	# this is the default Leyland logger, to use it, just don't define
+	# a logger in your application's configuration
+
 =head1 DESCRIPTION
+
+This module provides Leyland application with basic logging capabilities,
+by simply printing log messages to STDERR. If your application's config
+hash-ref does not define a logger, this module will be used.
+
+=head1 CONSUMES
+
+L<Leyland::Logger>
 
 =head1 ATTRIBUTES
 
 None.
-
-=head1 CLASS METHODS
 
 =head1 OBJECT METHODS
 
@@ -91,7 +102,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

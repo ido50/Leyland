@@ -12,13 +12,32 @@ Leyland::Parser - Provides the sweet REST syntax for Leyland controller routes
 
 =head1 SYNOPSIS
 
+	# in a controller of your app (check out L<Leyland::Manual::Controller>
+	# for more info on creating routes):
+
+	package MyApp::Controller::Stuff;
+
+	use Moose;
+	use Leyland::Parser;
+	use namespace::autoclean;
+
+	prefix { '/stuff' }
+
+	get '^/$' {
+		# $self and $c are automatically available for you here
+		$c->template('stuff.html');
+	}
+
+	post '^/$' returns 'application/json' {
+		# do stuff
+	}
+
+	__PACKAGE__->meta->make_immutable;
+
 =head1 DESCRIPTION
 
-=head1 ATTRIBUTES
-
-=head1 CLASS METHODS
-
-=head1 OBJECT METHODS
+This module is meant to be used by <Leyland controllers|Leyland::Controller>.
+It exports Leyland's sweet syntax for creating routes and prefixes.
 
 =cut
 
@@ -32,6 +51,10 @@ default_export prefix codeblock { caller->set_prefix(@_) }
 =head1 AUTHOR
 
 Ido Perlmuter, C<< <ido at ido50.net> >>
+
+=head1 ACKNOWLEDGMENTS
+
+Paul Driver, author of L<Flea>, from which I have learned how to do this.
 
 =head1 BUGS
 
@@ -69,7 +92,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

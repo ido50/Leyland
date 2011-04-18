@@ -12,18 +12,39 @@ Leyland::Controller - Leyland controller base class
 
 =head1 SYNOPSIS
 
+	# used internally
+
 =head1 DESCRIPTION
 
-=head1 ATTRIBUTES
+This L<Moose role|Moose::Role> describes how L<Leyland> controllers are
+to be created. For information about creating controllers, please see
+L<Leyland::Manual::Controller>.
 
-=head1 CLASS METHODS
+=head1 CLASS ATTRIBUTES
 
-=head1 OBJECT METHODS
+=head2 prefix
+
+The prefix of the controller. Defaults to the empty string (denoting a root
+controller).
+
+=head2 routes
+
+A L<Tie::IxHash> object with all the controller's routes.
 
 =cut
 
 class_has 'prefix' => (is => 'rw', isa => 'Str', default => '');
 class_has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
+
+=head1 CLASS METHODS
+
+=head2 add_route( $method, $regex, \&code )
+
+Receives an HTTP request method, a regular expression for path matching,
+and a subroutine reference that together describe a route, and adds the
+route to the controller's "routes" list.
+
+=cut
 
 sub add_route {
 	my ($class, $method, $regex, $code) = (shift, shift, shift, pop);
@@ -63,17 +84,56 @@ sub add_route {
 	$class->_set_routes($routes);
 }
 
+=head2 set_prefix()
+
+Sets the prefix for all routes in the controller.
+
+=cut
+
 sub set_prefix {
 	my ($class, $code) = @_;
 
 	$class->prefix($code->());
 }
 
+=head1 METHODS MEANT TO BE OVERRIDDEN
+
+The following methods are meant to be overridden by consuming classes
+(i.e. controllers). For information on their purpose, see L<Leyland::Manual::Controller>.
+
+=head2 auto( $c )
+
+Provides Leyland controllers with a default C<auto()> method that doesn't
+do anything. Controllers are expected to override this.
+
+=cut
+
 sub auto { 1 }
+
+=head2 pre_route( $c )
+
+Provides Leyland controllers with a default C<pre_route()> method that doesn't
+do anything.
+
+=cut
 
 sub pre_route { 1 }
 
+=head2 pre_template( $c, $tmpl_name, [ \%context, $use_layout ] )
+
+Provides Leyland controllers with a default C<pre_template()> method that doesn't
+do anything.
+
+=cut
+
 sub pre_template { 1 }
+
+=head2 post_route( $c, $ret )
+
+Provides Leyland controllers with a default C<post_route()> method that doesn't
+do anything.
+
+=cut
 
 sub post_route { 1 }
 
@@ -117,7 +177,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

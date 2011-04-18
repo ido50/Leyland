@@ -1,0 +1,99 @@
+#!/usr/bin/perl -w
+
+use Leyland::Cmd;
+Leyland::Cmd->run;
+
+=head1 NAME
+
+leyland - Leyland application generator
+
+=head1 SYNOPSIS
+
+	# from the command line
+	leyland app --author "Some Guy" --email "some_guy@email.com" MyApp
+
+=head1 DESCRIPTION
+
+This script is used to easily create new L<Leyland> applications. Provided
+with an application name, and possibly other optional information, this
+script will create the application's structure on the file system, and
+also all the base files needed for the application, so the new application
+is immediately usable (but probably not useful) after running this script.
+
+You really don't have to use this script to create applications though.
+You can create the application's structure and base files by hand if you
+wish. However, until you are familiar with Leyland application structure,
+it is a good idea to use this script to start your applications.
+
+In the future, this script will also perform other operations, such as
+creating new controllers in existing applications.
+
+=head1 USAGE
+
+Using this script is very simple. From the command line, invoke this
+script with the name of the operation you wish to perform (currently,
+only "app", for creating a new application, is supported), followed by
+a list of zero or more options, and finally zero or more arguments.
+
+The "app" command takes the following options:
+
+=over
+
+=item * -a | --author - The name of the application's author.
+
+=item * -e | --email - The email address of the application's author.
+
+=back
+
+It also takes one argument - the application's name. This should be the
+application's package name, such as C<My::App>, not L<My-App>.
+
+=head1 AUTHOR
+
+Ido Perlmuter, C<< <ido at ido50.net> >>
+
+=head1 BUGS
+
+Please report any bugs or feature requests to C<bug-Leyland at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Leyland>.  I will be notified, and then you'll
+automatically be notified of progress on your bug as I make changes.
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+	perldoc leyland
+
+You can also look for information at:
+
+=over 4
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Leyland>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Leyland>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Leyland>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/Leyland/>
+
+=back
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright 2010-2011 Ido Perlmuter.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See http://dev.perl.org/licenses/ for more information.
+
+=cut

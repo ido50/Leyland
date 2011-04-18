@@ -21,19 +21,141 @@ extends 'Plack::Request';
 
 Leyland::Context - The working environment of an HTTP request and Leyland response
 
+=head1 SYNOPSIS
+
+	# every request automatically gets a Leyland::Context object, which
+	# is available in your routes and your views:
+	post '^/blog$' {
+		my $post = Blog->new(
+			subject => $c->params->{subject},
+			user => $c->user,
+			date => DateTime->now,
+			text => $c->params->{text}
+		);
+		return $c->template('blog.html', { post => $post });
+	}
+
+	# by the way, since Leyland is RESTful, your application can accept
+	# requests of any content type, making the above something like
+	# this:
+	post '^/blog$' accepts 'text/plain' {
+		my $post = Blog->new(
+			subject => $c->params->{subject},
+			user => $c->user,
+			date => DateTime->now,
+			text => $c->data
+		);
+		return $c->template('blog.html', { post => $post });
+	}
+
+=head1 DESCRIPTION
+
+The Leyland context object is the heart and soul of your application. Or
+something. Anyway, it's an object that escorts an HTTP request to somewhere
+in your application through its entire lifetime, up to the point where an
+HTTP response is sent back to the client. This is quite similar to the
+L<Catalyst> context object.
+
+The context object holds a lot of information about the request, such as
+its content type, its method, the parameters/content provided with it,
+the routes it matched in your application, etc. Your controllers and views
+will mostly interact with this object, which apart from the information
+mentioned just now, provides you with useful methods to generate the final
+response, and perform other necessary operations such as logging.
+
+The Leyland context object inherits from L<Plack::Request>, so you can
+use all of its attributes and methods. But keep in mind that this class
+performs some modifications on these methods, all documented in the
+L</"PLACK MODIFICATIONS"> section.
+
+This document is for reference purposes only, please refer to L<Leyland::Manual>
+for more information on using the context object.
+
 =head1 EXTENDS
 
 L<Plack::Request>
 
-=head1 SYNOPSIS
-
-=head1 DESCRIPTION
-
 =head1 ATTRIBUTES
 
-=head1 CLASS METHODS
+=head2 app
 
-=head1 OBJECT METHODS
+Holds the <Leyland> object of the application.
+
+=head2 cwe
+
+Holds the L<Plack> environment in which the application is running. This
+is the C<PLACK_ENV> environment variable. See the C<-E> or C<--env> switch
+in L<plackup> for more information. Defaults to 'development'.
+
+=head2 num
+
+The sequential number of the request (since the application has been
+initialized).
+
+=head2 res
+
+The L<Plack::Response> object used to respond to the client.
+
+=head2 routes
+
+An array reference of all routes matched by the request (there can be
+more than one).
+
+=head2 current_route
+
+The index of the route to be invoked in the "routes" attribute above. By
+default this would be the first route (i.e. index 0), unless <pass>es are
+performed.
+
+=head2 controller
+
+The controller class of the current route.
+
+=head2 wanted_mimes
+
+An array reference of all media types the client accepts, ordered by
+the client's preference, as defined by the "Accept" HTTP header.
+
+=head2 want
+
+The media type the L<Leyland::Negotiator> has decided to return to the
+client.
+
+=head2 lang
+
+The language to use when localizing responses, probably according to the
+client's wishes. Defaults to 'en' for English.
+
+=head2 stash
+
+A hash-ref of data meant to be available for the views/templates when
+rendering resources.
+
+=head2 user
+
+Something (anything really) that describes the user that initiated the
+request. This attribute will only be defined by the application, you are
+free to choose whatever scheme of authentication as you wish, this attribute
+is provided for your convenience. You will use the C<set_user()> method
+to set the value of this attribute.
+
+=head2 json
+
+A L<JSON::Any> object for usage by routes as they see fit.
+
+=head2 xml
+
+An L<XML::TreePP> object for usage by routes as they see fit.
+
+=head2 _pass_next
+
+Holds a boolean value indicating whether the route has decided to pass
+the request to the next matching route. Not to be used directly.
+
+=head2 _data
+
+Holds the content of the HTTP request for POST and PUT requests after
+parsing. Not to be used directly.
 
 =cut
 
@@ -47,17 +169,17 @@ has 'res' => (is => 'ro', isa => 'Plack::Response', lazy_build => 1);
 
 has 'routes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_routes', writer => '_set_routes');
 
+has 'current_route' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_current_route');
+
+has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
+
 has 'wanted_mimes' => (is => 'ro', isa => 'ArrayRef[HashRef]', builder => '_build_mimes');
 
 has 'want' => (is => 'ro', isa => 'Str', writer => '_set_want');
 
-has 'lang' => (is => 'ro', isa => 'Str', writer => 'set_lang');
-
-has 'current_route' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_current_route');
+has 'lang' => (is => 'ro', isa => 'Str', writer => 'set_lang', default => 'en');
 
 has 'stash' => (is => 'ro', isa => 'HashRef', default => sub { {} });
-
-has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
 
 has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user', clearer => 'clear_user');
 
@@ -69,37 +191,123 @@ has '_pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_pa
 
 has '_data' => (is => 'ro', isa => 'Any', predicate => '_has_data', writer => '_set_data');
 
+=head1 OBJECT METHODS
+
+Since this class extends L<Plack::Request>, it inherits all its methods,
+so refer to Plack::Request for a full list. However, this module performs
+some modifications on certain Plack::Request methods, all of which are
+documented in the L</"PLACK MODIFICATIONS"> section.
+
+=head2 leyland
+
+An alias for the "app" attribute.
+
+=cut
+
 sub leyland { shift->app }
+
+=head2 log()
+
+A shortcut for C<< $c->app->log >>.
+
+=cut
 
 sub log { shift->app->log }
 
+=head2 config()
+
+A shortcut for C<< $c->app->config >>.
+
+=cut
+
 sub config { shift->app->config }
+
+=head2 views()
+
+A shortcut for C<< $c->app->views >>.
+
+=cut
 
 sub views { shift->app->views }
 
+=head2 has_routes()
+
+Returns a true value if the request matched any routes.
+
+=head2 set_lang( $lang )
+
+Sets the language to be used for localization.
+
+=head2 has_user()
+
+Returns a true value if the "user" argument has a value.
+
+=head2 set_user( $user )
+
+Sets the "user" argument with a new value. This value could be anything,
+a simple string/number, a hash-ref, an object, whatever your app uses.
+
+=head2 clear_user()
+
+Clears the value of the "user" argument, if any. Useful for logout actions.
+
+=head2 params()
+
+A shortcut for C<< $c->parameters->as_hashref_mixed >>. Note that this
+is read-only, so changes you make to the hash-ref returned by this method
+are not stored. For example, if you run C<< $c->params->{something} = 'whoa' >>,
+subsequent calls to C<< $c->params >> will not have the "something"
+key.
+
+=cut
+
 sub params { shift->parameters->as_hashref_mixed }
 
+=head2 data( [ $dont_parse ] )
+
+Returns the data of the request for POST and PUT requests. If the data
+is JSON or XML, this module will attempt to automatically convert it to a Perl
+data structure, which will be returned by this method (if conversion will
+fail, this method will return C<undef>). Otherwise, the data will be returned
+as is. You can force this method to return the data as is even if it's
+JSON or XML by passing a true value to this method.
+
+=cut
+
 sub data {
-	my $self = shift;
+	my ($self, $dont_parse) = @_;
 
 	return unless $self->content_type && $self->content;
 
 	return $self->_data if $self->_has_data;
 
-	if ($self->content_type =~ m!^application/json!) {
+	if ($self->content_type =~ m!^application/json! && !$dont_parse) {
 		my $data = try { $self->json->from_json($self->content) } catch { undef };
 		return unless $data;
 		$self->_set_data($data);
 		return $self->_data;
-	} elsif ($self->content_type =~ m!^application/(atom+)?xml!) {
+	} elsif ($self->content_type =~ m!^application/(atom+)?xml! && !$dont_parse) {
 		my $data = try { $self->xml->parse($self->content) } catch { undef };
 		return unless $data;
+		$self->_set_data($data);
+		return $self->_data;
+	} else {
+		my $data = $self->content;
 		$self->_set_data($data);
 		return $self->_data;
 	}
 
 	return;
 }
+
+=head2 pass()
+
+Causes Leyland to invoke the next matching route, if any, after this
+request has finished (meaning it does not pass immediately). Since you
+will most likely want to pass routes immediately, use C<< return $self->pass >>
+in your routes to do so.
+
+=cut
 
 sub pass {
 	my $self = shift;
@@ -114,16 +322,29 @@ sub pass {
 	return 0;
 }
 
-sub view {
-	my ($self, $name) = @_;
+=head2 render( $tmpl_name, [ \%context, $use_layout ] )
 
-	foreach (@{$self->views} || ()) {
-		next unless $_->name eq $name;
-		return $_;
-	}
+=head2 template( $tmpl_name, [ \%context, $use_layout ] )
 
-	croak "Can't find a view named $name.";
-}
+Renders the view/template named C<$tmpl_name> using the first view class
+defined by the application. Anything in the C<$context> hash-ref will be
+automatically available inside the template, which will be rendered inside
+whatever layout template is defined, unless C<$use_layout> is provided
+and holds a false value (well, 0 really). The context object (i.e. C<$c>)
+will automatically be embedded in the C<$context> hash-ref under the name
+"c", as well as the application object (i.e. C<< $c->app >>) under the
+name "l". Anything in the stash (i.e. C<< $c->stash >>) will also be
+embedded in the context hash-ref, but keys in C<$context> take precedence
+to the stash, so if the stash has the key 'name' and C<$context> also has
+the key 'name', then the one from C<$context> will be used.
+
+Returns the rendered output. You will mostly use this at the end of your
+routes as the return value.
+
+The two methods are the same, C<template> is provided as an alias for
+C<render>.
+
+=cut
 
 sub render {
 	my ($self, $tmpl_name, $context, $use_layout) = @_;
@@ -153,18 +374,29 @@ sub render {
 
 sub template { shift->render(@_) }
 
-sub structure {
-	my ($self, $obj, $want) = @_;
-	
-	if ($want eq 'application/json') {
-		return $self->json->to_json($obj);
-	} elsif ($want eq 'application/atom+xml' || $want eq 'application/xml') {
-		return $self->xml->write($obj);
-	} else {
-		# return json anyway (temporary)
-		return $self->json->to_json($obj);
-	}
-}
+=head2 forward( $path, [ @args ] )
+
+Immediately forwards the request (internally) to a different location defined
+by C<$path>. Leyland will attempt to find routes that match the provided
+path (without performing HTTP negotiations for the request's method,
+content type, accepted media types, etc. like L<Leyland::Negotiator> does).
+The first matching route will be invoked, with C<@args> passed to it (if
+provided). The returned output (before serializing, if would have been
+performed had the route been invoked directly) is returned and the route
+from which the C<forward> has been called continues. If you don't want
+it to continue, simple use C<< return $c->forward('/somewhere') >>.
+
+At times, you'd have two or more routes sharing the exact same path, but
+each having a different HTTP method. In that case, it is unknown which
+route will be forwarded to. To force Leyland to forward to a route of a
+specific method, prefix C<$path> with the method name and a semicolon,
+like so: C<< $c->forward('POST:/somehwere') >>.
+
+Note that if no routes are found, a 500 Internal Server Error will be
+thrown, not a 404 Not Found error, as this really is an internal server
+error.
+
+=cut
 
 sub forward {
 	my ($self, $path) = (shift, shift);
@@ -199,11 +431,28 @@ sub forward {
 	return $routes->[0]->{code}->(@pass);
 }
 
+=head2 loc( $msg, [ @args ] )
+
+Uses L<Leyland::Localizer> to localize the provided string to the language
+defined in the "lang" attribute, possibly performing some replacements
+with the values provided in C<@args>. See L<Leyland::Manual::Localizing>
+for more info.
+
+=cut
+
 sub loc {
 	my ($self, $msg, @args) = @_;
 
 	return $self->app->localizer->loc($msg, $self->lang, @args);
 }
+
+=head2 exception( \%err )
+
+Throws a L<Leyland::Exception>. C<$err> must have a "code" key with the
+error's HTTP status code, and most likely an "error" key with a description
+of the error. See L<Leyland::Manual::Exceptions> for more information.
+
+=cut
 
 sub exception {
 	my ($self, $err) = @_;
@@ -213,6 +462,14 @@ sub exception {
 
 	Leyland::Exception->throw($err);
 }
+
+=head2 uri_for( $path, [ \%query ] )
+
+Returns a L<URI> object with the full URI to the provided path. If a
+C<$query> hash-ref is provided, it will be converted to a query string
+and used in the URI object.
+
+=cut
 
 sub uri_for {
 	my ($self, $path, $args) = @_;
@@ -226,13 +483,25 @@ sub uri_for {
 	return $uri;
 }
 
-sub finalize { 1 } # meant to be overridden
+=head2 finalize( $ret )
 
-=head1 INTERNAL METHODS
+This method is meant to be overridden by classes that extend this class,
+if used in your application. It is automatically called after the route
+has been invoked and it gets a reference to the output returned from the
+route (after serialization, if performed), even if this output is a scalar
+(like HTML text), in which case C<$ret> will be a reference to a scalar.
 
-The following methods are only to be used internally.
+You can use it to modify and manipulate the returned output if you wish.
+
+The default C<finalize()> method provided by this class does not do anything.
 
 =cut
+
+sub finalize { 1 } # meant to be overridden
+
+# -------------------------------------------------------------------- #
+# INTERNAL METHODS --------------------------------------------------- #
+# -------------------------------------------------------------------- #
 
 sub _build_res { shift->new_response(200, [ 'Content-Type' => 'text/html' ]) }
 
@@ -369,14 +638,14 @@ sub _serialize {
 			# empty string for template name means deserialize
 			# same goes if the route returns the wanted type
 			# but has no template rule for it
-			return $self->structure($obj->[1], $want);
+			return $self->_structure($obj->[1], $want);
 		} else {
 			my $use_layout = scalar @$obj == 3 && defined $obj->[2] ? $obj->[2] : 1;
 			return $self->template($obj->[0]->{$want}, $obj->[1], $use_layout);
 		}
 	} elsif (ref $obj && (ref $obj eq 'ARRAY' || ref $obj eq 'HASH')) {
 		# serialize according to wanted type
-		return $self->structure($obj, $want);
+		return $self->_structure($obj, $want);
 	} elsif (ref $obj) {
 		# $obj is some kind of reference, use Data::Dumper;
 		Dumper($obj);
@@ -409,6 +678,19 @@ sub _route_parents {
 	return @parents;
 }
 
+sub _structure {
+	my ($self, $obj, $want) = @_;
+	
+	if ($want eq 'application/json') {
+		return $self->json->to_json($obj);
+	} elsif ($want eq 'application/atom+xml' || $want eq 'application/xml') {
+		return $self->xml->write($obj);
+	} else {
+		# return json anyway (temporary)
+		return $self->json->to_json($obj);
+	}
+}
+
 sub FOREIGNBUILDARGS {
 	my ($class, %args) = @_;
 
@@ -417,9 +699,39 @@ sub FOREIGNBUILDARGS {
 
 sub BUILD { shift->_log_request }
 
+=head1 PLACK MODIFICATIONS
+
+The following modifications are performed on methods provided by L<Plack::Request>,
+from which this class inherits.
+
+=head2 content()
+
+Returns the request content after UTF-8 decoding it (Plack::Request doesn't
+decode the content, this class does since Leyland is purely UTF-8).
+
+=cut
+
 override 'content' => sub { $_[0]->env->{'leyland.request.content'} ||= Encode::decode('UTF-8', super()) };
 
+=head2 session()
+
+Returns the C<psgix.session> hash-ref, or, if it doesn't exist, an empty
+hash-ref. This is different from Plack::Request, which won't return anything
+if there is no session hash-ref. If C<psgix.session> really doesn't exist,
+however, then the returned hash-ref won't be very useful and data entered
+to it will only be alive for the lifetime of the request.
+
+=cut
+
 override 'session' => sub { super() || {} };
+
+=head2 query_parameters()
+
+Returns a L<Hash::MuliValue> object of query string (GET) parameters,
+after UTF-8 decoding them (Plack::Request doesn't
+decode the query, this class does since Leyland is purely UTF-8).
+
+=cut
 
 override 'query_parameters' => sub {
 	my $self = shift;
@@ -442,6 +754,14 @@ override 'query_parameters' => sub {
 		return $self->env->{'leyland.request.query'} = Hash::MultiValue->from_mixed($params);
 	}
 };
+
+=head2 body_parameters()
+
+Returns a L<Hash::MultiValue> object of posted parameters in the request
+body (POST/PUT), after UTF-8 decoding them (Plack::Request doesn't
+decode the body, this class does since Leyland is purely UTF-8).
+
+=cut
 
 override 'body_parameters' => sub {
 	my $self = shift;
@@ -519,7 +839,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010 Ido Perlmuter.
+Copyright 2010-2011 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
