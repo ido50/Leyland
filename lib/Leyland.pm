@@ -162,11 +162,26 @@ to extend and tweak its behavior.
 
 =back
 
+=head2 STATUS
+
+Development of Leyland began August 2010. I have been using it extensively
+for several projects, some of them already in production. Therefore, the
+API has somewhat stabilized and I do not consider it in alpha status.
+That said, Leyland still is immature, and I cannot guarantee that API
+changes won't be made, nor that it is bug free or even secure enough. If
+you're thinking of using Leyland for a production project, please test it
+thoroughly beforehand.
+
 =head2 MANUAL / TUTORIAL / GUIDE / GIBBERISH
 
 To learn about using Leyland, please refer to the L<Leyland::Manual>. The
 documentation of this distribution's classes is for reference only, the
 manual is where you're most likely to find your answers. Or not.
+
+=head2 WHAT'S WITH THE NAME?
+
+Leyland is named after Mr. Bean's clunker of a car - the British Leyland
+Mini 1000. I don't know why.
 
 =head1 ATTRIBUTES
 
@@ -446,6 +461,11 @@ sub BUILD {
 		push(@views, $class->new());
 	}
 	$self->_set_views(\@views) if scalar @views;
+	# if we haven't loaded any views, load Tenjin
+	unless (scalar @views) {
+		load Leyland::View::Tenjin;
+		$self->_set_views([ Leyland::View::Tenjin->new ]);
+	}
 
 	# get all routes
 	my $routes = Tie::IxHash->new;

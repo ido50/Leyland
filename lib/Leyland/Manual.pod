@@ -105,17 +105,22 @@ resources, representations, etc.
 
 =item 4. L<Leyland::Manual::Models> - Describes models and their usage.
 
-=item 5. L<Leyland::Manual::Localization> - Describes how application
+=item 5. L<Leyland::Manual::StaticFiles> - Describes how to server static
+files from your application.
+
+=item 6. L<Leyland::Manual::Localization> - Describes how application
 localization is performed.
 
-=item 6. L<Leyland::Manual::Logging> - Describes how to use Leyland's
+=item 7. L<Leyland::Manual::Logging> - Describes how to use Leyland's
 logging facilities.
 
-=item 7. L<Leyland::Manual::Exceptions> - To err is human. To throw proper
+=item 8. L<Leyland::Manual::Exceptions> - To err is human, to throw proper
 HTTP exceptions divine.
 
-=item 8. L<Leyland::Manual::Deployment> - Describes how to run/deploy/test
+=item 9. L<Leyland::Manual::Deployment> - Describes how to run/deploy/test
 Leyland applications.
+
+=item 10. L<Leyland::Manual::Extending> - Describes how to extend Leyland.
 
 =back
 

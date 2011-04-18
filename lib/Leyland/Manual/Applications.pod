@@ -2,6 +2,307 @@
 
 Leyland::Manual::Applications - Leyland application structure and creation
 
+=head1 APPLICATION STRUCTURE
+
+Leyland application structure is a fusion of the L<Catalyst> and L<Dancer>
+application structures. The following is the basic structure of a Leyland
+application (note that directories marked "(optional)" are pure suggestions
+or examples, and are not integral to a Leyland application, which can perfectly live
+without them):
+
+	|- /
+	|----- app.psgi
+	|----- lib/
+	|-------- MyApp.pm
+	|-------- MyApp/
+	|----------- Context.pm (optional)
+	|----------- Controller/
+	|-------------- Root.pm
+	|-------------- SomeOtherController.pm
+	|-------------- SomeOtherController/
+	|----------------- Admin.pm
+	|----------- Model/ (optional)
+	|----------- View/ (optional)
+	|----- public/ (optional)
+	|-------- css/ (optional)
+	|-------- js/ (optional)
+	|-------- images/ (optional)
+	|----- views/
+	|-------- index.html
+	|-------- layouts/
+	|----------- main.html
+	|----- i18n/ (optional)
+	|-------- es.json
+	|-------- he_and_it.coll.json
+
+The C<app.psgi> file is a standard L<PSGI> application that configures and
+initializes the Leyland application, possibly adds L<Plack> middlewares,
+and lets Leyland handle incoming requests. A minimal C<app.psgi> file
+will look something like this:
+
+	#!/usr/bin/perl -w
+
+	use lib './lib';
+	use strict;
+	use warnings;
+	use MyApp;
+
+	my $config = { app => 'MyApp' };
+
+	my $a = MyApp->new(config => $config);
+
+	my $app = sub {
+		$a->handle(shift);
+	};
+
+The C<lib/MyApp.pm> file is a simple class the extends L<Leyland>. A minimal
+example would be:
+
+	package MyApp;
+
+	use Moose;
+	use namespace::autoclean;
+
+	extends 'Leyland';
+
+	sub setup {
+		my $self = shift;
+		
+		# perform some initializations
+	}
+
+	__PACKAGE__->meta->make_immutable;
+
+The C<setup()> method is called immediately after the class is loaded and
+a new instance of it is created. It is useful for performing some necessary
+initializations and whatever you need to do just once to get your app working.
+You might initiate a database connection here, clear some files left over
+by your application in previous runs (if it generates any), whatever you
+find appropriate.
+
+Next in line we find C<lib/MyApp/Context.pm>. Most applications will not
+have this file. This file (which can actually be named differently and
+located differently) is supposed to extend L<Leyland::Context> when you
+want to provide it with methods and attributes specific to your application.
+I will not describe it further here, take a look at L<Leyland::Manual::Extending>
+for more information.
+
+Next we have the controllers. Those are located under C<lib/MyApp/Controller/>.
+The controllers are those that handle an incoming request and return a
+response. A Leyland application must have a root controller, called C<Root.pm>.
+A minimal controller will look something like this:
+
+	package Dribblist::Controller::Root;
+
+	use Moose;
+	use Leyland::Parser;
+	use namespace::autoclean;
+
+	with 'Leyland::Controller';
+
+	prefix { '' }
+
+	get '^/$' {
+		$c->template('index.html');
+	}
+	
+	__PACKAGE__->meta->make_immutable;
+
+More information about controllers in L<Leyland::Manual::Controllers>.
+
+The C<lib/MyApp/Model/> directory is really just a suggestion. Leyland, as
+opposed to Catalyst, does not concern itself with models. Do what you like,
+how you like. If you want to create model classes in this directory, go
+ahead. If you want to do that somewhere/somehow else, knock yourself out.
+Leyland will not attempt to load model classes for you. More information
+about models in L<Leyland::Manual::Models>.
+
+The C<lib/MyApp/View/> directory is where you can put your own customized
+view classes. You don't have to do so, and in my opinion you're not likely
+to do so, but this option is available for you. As Leyland-provided view
+classes are meant to be "plug-and-play" (i.e. you don't have to create view
+classes to use them like in L<Catalyst> for example), Leyland gives you
+the ability to create your own classes, or extend those provided by Leyland
+if you wish. Any class in the C<lib/MyApp/View/> directory will be automatically
+loaded by Leyland when your app is started. Read L<Leyland::Manual::Views>
+for more information.
+
+Next up is the C<public/> directory, which includes static files of your
+application, such as images and CSS files. Note that this is not the place
+for views/templates. Since Leyland is designed for web applications, pretty
+much every Leyland application will have a public directory, though it
+doesn't have to be called "public", nor does it need to contain the directories
+in the above example ("css", "js" and "images"). Static files are not
+handled by Leyland directly. Instead, Leyland relies on L<Plack::Middleware::Static>
+to server those files. More information about static files in L<Leyland::Manual::StaticFiles>.
+
+The C<views/> directory is where your views and templates reside. These will
+mostly be HTML templates, but can actually be anything, even JSON or XML
+or whatever. Views and templates are generated by Leyland's view classes
+, and are returned to the clients by your controllers. A view is written
+in the language of the template engine of your choice, such as L<Tenjin>
+or L<Template::Toolkit>. Currently, however, Tenjin is the only view class
+available for Leyland applications.
+
+The C<views/layouts/> subdirectory contains layouts for your views. Views
+from the C<views/> directory, when rendered, can (but doesn't have to) be
+rendered into these layouts. For example, the C<index.html> view can be:
+
+	<h1>Hello World</h1>
+
+While a layout view called C<layouts/main.html> can be:
+
+	<html>
+		<head><title>Hi there</title></head>
+		<body>[== $_content =]</body>
+	</html>
+
+When a controller renders C<index.html> for output, C<index.html> will be
+wrapped by C<layouts/main.html> where C<[== $_content =]> resides (this is
+Tenjin specific, other template engines will be different), with the final
+output:
+
+	<html>
+		<head><title>Hi there</title></head>
+		<body><h1>Hello World</h1></body>
+	</html>
+
+See L<Leyland::Manual::Views> for more information about views.
+
+Finally, we have the C<i18n/> directory. Once again, this is optional and
+purely a suggestion. If used, this directory will hold JSON localization
+files for localizing your application with L<Locale::Wolowitz>. See
+L<Leyland::Manual::Localization> for more information.
+
+=head1 CREATING LEYLAND APPLICATIONS
+
+To start a new Leyland application, one needs to create the above application
+structure. You can do it by hand, or you can use the provided script,
+L<leyland>, which will create this structure for you automatically:
+
+	# from the command line
+	leyland app --author "Some Guy" --email "some_guy@email.com" MyApp
+
+Replace C<MyApp> with the name of your application. That would be the
+package name (i.e. with "::", like "My::New::App"), not the distribution name
+(i.e. with "-", like "My-New-App"). You don't have to provide the
+C<--author> and C<--email> options, these are just used in the POD documentation
+of your classes, but keep in mind that if you don't, some useless default
+values will be used.
+
+=head1 CONFIGURING LEYLAND APPLICATIONS
+
+While most other application frameworks like L<Catalyst> and L<Dancer>
+take configuration from configuration files, for Leyland I have currently
+decided to create a configuration directly inside the C<app.psgi> file.
+In the future, configuration files may be supported.
+
+If you take a look at the example of the C<app.psgi> file above, you will
+notice the C<$config> variable. This is the configuration hash-ref of your
+application. At its minimum, it should contain the name of your application
+(under the 'app' key), otherwise 'Leyland' will be used.
+
+Other configuration options are:
+
+=over
+
+=item * "views":  takes an array reference with the names of all view
+classes to initialize. These are classes of the C<Leyland::View::*> family.
+If you don't provide this option, "['Tenjin']" will be used, and thus
+L<Leyland::View::Tenjin> will be available for your app.
+
+=item * "locales": takes a path (can be relative) to a directory containing
+your application's L<Locale::Wolowitz> localization files. If not provided,
+your app is assumed mono-lingual.
+
+=item * "logger": takes a hash-ref with options for the logger class to
+use for logging. Read L<Leyland::Manual::Logging> for more information.
+If not provided, your application will log to STDERR.
+
+=item * "environments": takes a hash-ref with configuration options which
+are only relevant to the Plack environment (the C<PLACK_ENV> environment
+variable) on which the application is running. When your app is initialized,
+if configuration options are available for the selected environment are
+available, they will also be used, and will even take precedence over
+the basic configuration options. For example, you can define a "logger"
+option in the top level of the C<$config> variable that logs to the screen, and in "environments", under
+"deployment" perhaps, define another "logger" option that logs both to the
+screen and also the file. When your app is running on the "deployment"
+environment, the latter "logger" option will take effect.
+
+=back
+
+Anything else you provide in the C<$config> variable (including under the
+working environment) will also be available for usage by your application.
+A rather complete example for the C<$config> variable will be:
+
+	my $config = {
+		app => 'MyApp',
+		views => ['Tenjin'],
+		locales => './i18n',
+		default_lang => 'en',
+		environments => {
+			development => {
+				database_host => 'mongodb://localhost:27017',
+				logger => {
+					class => 'LogHandler',
+					opts => {
+						outputs => [
+							file => {
+								filename => "myapp.$ENV{PLACK_ENV}.log",
+								minlevel => 0,
+								maxlevel => 8,
+								utf8 => 1,
+							},
+							screen => {
+								log_to   => "STDERR",
+								minlevel => 0,
+								maxlevel => 8,
+							},
+						]
+					}
+				},
+			},
+			deployment => {
+				database_host => 'mongodb://localhost:27017,mongodb://localhost:27018',
+				logger => {
+					class => 'LogHandler',
+					opts => {
+						outputs => [
+							file => {
+								filename => "myapp.$ENV{PLACK_ENV}.log",
+								minlevel => 0,
+								maxlevel => 8,
+								utf8 => 1,
+							},
+						]
+					}
+				},
+			},
+		}
+	};
+
+As you can see, every environment has a different "logger" configuration.
+Plus, every environment has a its own "database_host" value, which is
+not Leyland-specific, but supposedly used by C<MyApp>. The same goes for
+the "default_lang" option, which is maybe used by the application developer
+to define the default language in which to respond to requests that do not
+define a language to use.
+
+=head1 RUNNING LEYLAND APPLICATIONS
+
+Since Leyland is L<Plack> based, running Leyland applications is very
+easy. To start testing your application, change into the application's
+root directory and simply run C<plackup>. This will start your application
+with Plack's standalone web server, under the "development" environment,
+listening on port 5000. Read L<Leyland::Manual::Deployment> and L<plackup>
+for more information about running and deploying plack applications.
+
+=head1 WHAT'S NEXT?
+
+Read L<Leyland::Manual::Controllers> now to learn how to create Leyland
+controllers or L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">.
+
 =head1 AUTHOR
 
 Ido Perlmuter, C<< <ido at ido50.net> >>
