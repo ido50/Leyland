@@ -59,7 +59,7 @@ you really only should do this with the 4xx and 5xx family of status codes.
 You can, however, throw errors with a 3xx status code, in which case you
 are also expected to provide a URI to redirect to. You should only use this
 if you have a good reason to, as it is much more proper to redirect using
-C<< $c->res->redirect >> (see L<Leyland::Manual::Routes>) for more information.
+C<< $c->res->redirect >> (see L<Leyland::Manual::Controller/"ROUTES">) for more information.
 
 Note that you don't use this class directly. Instead, to throw exceptions,
 use C<exception()> in L<Leyland::Context>.

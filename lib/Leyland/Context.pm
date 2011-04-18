@@ -435,7 +435,7 @@ sub forward {
 
 Uses L<Leyland::Localizer> to localize the provided string to the language
 defined in the "lang" attribute, possibly performing some replacements
-with the values provided in C<@args>. See L<Leyland::Manual::Localizing>
+with the values provided in C<@args>. See L<Leyland::Manual::Localization>
 for more info.
 
 =cut

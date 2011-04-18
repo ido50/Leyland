@@ -12,7 +12,7 @@ Leyland::Parser - Provides the sweet REST syntax for Leyland controller routes
 
 =head1 SYNOPSIS
 
-	# in a controller of your app (check out L<Leyland::Manual::Controller>
+	# in a controller of your app (check out L<Leyland::Manual::Controllers/"ROUTES">
 	# for more info on creating routes):
 
 	package MyApp::Controller::Stuff;

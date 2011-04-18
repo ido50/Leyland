@@ -18,7 +18,7 @@ Leyland::Controller - Leyland controller base class
 
 This L<Moose role|Moose::Role> describes how L<Leyland> controllers are
 to be created. For information about creating controllers, please see
-L<Leyland::Manual::Controller>.
+L<Leyland::Manual::Controllers>.
 
 =head1 CLASS ATTRIBUTES
 
@@ -99,7 +99,7 @@ sub set_prefix {
 =head1 METHODS MEANT TO BE OVERRIDDEN
 
 The following methods are meant to be overridden by consuming classes
-(i.e. controllers). For information on their purpose, see L<Leyland::Manual::Controller>.
+(i.e. controllers). For information on their purpose, see L<Leyland::Manual::Controllers>.
 
 =head2 auto( $c )
 
