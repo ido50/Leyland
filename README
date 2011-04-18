@@ -1,1 +1,291 @@
-This is a pointless attempt at creating a Plack-based RESTful web application framework that uses concepts from both Catalyst and Dancer. Please ignore for now.
+NAME
+    Leyland - Plack-based framework for RESTful web applications
+
+SYNOPSIS
+            # app.psgi:
+            # --------------------------------------------------------------
+            #!/usr/bin/perl -w
+
+            use strict;
+            use warnings;
+            use MyApp;
+            use Plack::Builder;
+
+            my $config = {
+                    app => 'MyApp',
+                    views => ['Tenjin'],
+                    locales => './i18n',
+                    logger => {
+                            class => 'LogHandler',
+                            opts => {
+                                    outputs => [
+                                            file => {
+                                                    filename => "myapp.$ENV{PLACK_ENV}.log",
+                                                    minlevel => 0,
+                                                    maxlevel => 8,
+                                                    utf8 => 1,
+                                            },
+                                            screen => {
+                                                    log_to   => "STDERR",
+                                                    minlevel => 0,
+                                                    maxlevel => 8,
+                                            },
+                                    ]
+                            }
+                    },
+                    environments => {
+                            development => {
+                                    # options in here will override top level options when running in the development environment
+                            },
+                            deployment => {
+                                    # options in here will override top level options when running in the deployment environment
+                            },
+                    }
+            };
+
+            my $myapp = MyApp->new(config => $config);
+
+            my $app = sub {
+                    $myapp->handle(shift);
+            };
+
+            builder {
+                    # enable whatever Plack middlewares you wish here, a good example
+                    # would be the Session middleware.
+                    # --------------------------------------------------------------
+                    # the Static middleware will serve static files from the app's
+                    # public directory, remove it (or comment it) if your web server
+                    # is serving those files
+                    enable 'Static',
+                            path => qr{^/((images|js|css|fonts)/|favicon\.ico$|apple-touch-icon\.png$)},
+                            root => './public/';
+
+                    $app;
+            };
+
+DESCRIPTION
+    Leyland is a Plack-based application framework for building truely
+    RESTful, MVC web applications.
+
+    "Another application framework?" you ask? Well yes! You see, after
+    several years of Catalyst development, I grew tired of Catalyst's bloat,
+    and the fact that it made it very hard (pretty much impossible if you
+    ask me) to create truely RESTful applications. I then moved for a short
+    while to Dancer, which had a nice syntax for defining routes and had at
+    least some REST properties, but I quickly found it didn't fit my needs
+    as well, and that it also made it very difficult to write truely RESTful
+    applications. I also really missed the whole "context object" and some
+    of Catalyst's other features, and simply couldn't get used to Dancer's
+    whole functional syntax you're supposed to use inside your routes. While
+    there were quite a few other options on CPAN, I didn't like any of them,
+    plus pretty much none of them where native Plack frameworks, which for
+    me is a big minus (can't blame them though as most of them predate
+    Plack), so I decided to create my own framework, based on Plack, and
+    designed to my liking. This is the mess that I've created. You will find
+    that it mostly resembles Catalyst, while providing a syntax mostly
+    similar to Dancer, but with a lot of crazy ideas of its own.
+
+  FEATURES
+    *   Build truely RESTful web applications - Leyland was designed from
+        the ground up according to the Representational State Transfer style
+        of software architecture. Leyland applications perform real HTTP
+        negotiations, (can) provide different representations of the same
+        resource easily, respond with proper HTTP status codes, throw real
+        HTTP exceptions, etc.
+
+    *   Automatic data (de)serialization - Leyland does the boring task of
+        serializing resources to representations in the format your client
+        wants to receive, like JSON and XML. It will also deserialize
+        JSON/XML requests to Perl data-structures automatically.
+
+    *   Pure UTF-8 - Leyland applications are pure UTF-8. Anything your
+        application receives is automatically UTF-8 decoded, and anything
+        your application sends is automatically UTF-8 encoded. Leyland apps
+        will not accept, nor provide, content in a different character set.
+        If you want to use different/multiple encodings, then Leyland is not
+        for you.
+
+    *   Localize for the client, not the server - Pretty much every other
+        application framework only concerns itself with localizing the
+        application to the locale of the machine on which it is running. I
+        find that this is rarely useful nor interesting to the application
+        developer. Leyland localizes for the client, not the server. If the
+        client wants to view your application (which may be a simple
+        website) in Hebrew, and your application supports Hebrew, then you
+        can easily provide him with Hebrew representations of your
+        application's resources. Leyland uses Locale::Wolowitz for this
+        purpose.
+
+    *   Easy deployment and middleware support via Plack - Leyland doesn't
+        support Plack, it is dependant on it. Leyland's entire session
+        support, for example, depends on Plack's Session middleware. Use the
+        full power of Plack in your Leyland application.
+
+    *   Less code, better programs - One thing I really hated in Catalyst is
+        that I had to create stupid pointless classes that don't do anything
+        but wrap a base class, just so I can have a new view class or
+        something. While not as lightweight as Dancer, Leyland does a lot of
+        the boring work for you, so you can concentrate more on your
+        application.
+
+    *   Flexible, extensible, unbreakable - Well, it's not unbreakable, but
+        Leyland was designed to be as flexible and as extensible as
+        possible. Leyland goes to great lengths to give you the ability to
+        do things the way you want to, and more importantly - the way your
+        end-users want to. Your applications listen to your users
+        preferences and automatically decide on a suitable course of action.
+        Leyland is also Moose based, making it easy to extend and tweak its
+        behavior.
+
+    *   Doesn't have a pony - You don't really need a pony, do you?
+
+  MANUAL / TUTORIAL / GUIDE / GIBBERISH
+    To learn about using Leyland, please refer to the Leyland::Manual. The
+    documentation of this distribution's classes is for reference only, the
+    manual is where you're most likely to find your answers. Or not.
+
+ATTRIBUTES
+  config
+    A hash-ref of configuration options for the application. If not
+    provided, a default configuration will be used.
+
+  context_class
+    The name of the class to be used as the context class for every request.
+    Defaults to Leyland::Context. If provided, the class must extend
+    Leyland::Context.
+
+  name
+    The package name of the application, for example "MyApp" or "My::App".
+    Automatically created from the app's configuration. If config doesn't
+    define a name, 'Leyland' will be used.
+
+  log
+    A logger object that "does" Leyland::Logger, providing the application
+    with logging capabilities. Automatically built from the app's config,
+    unless config doesn't define a logger, in which case
+    Leyland::Logger::STDERR will be used.
+
+  localizer
+    If application config defines a path for localization files, this will
+    hold a Leyland::Localizer object, which is based on Locale::Wolowitz.
+
+  views
+    An array refernce of all Leyland::View classes enabled in the app's
+    configuration. If none defined, Tenjin is used by default.
+
+  routes
+    A Tie::IxHash object holding all routes defined in the application's
+    controllers. Automatically created, not to be used directly by
+    applications.
+
+  req_counter
+    An integer representing the number of requests handled by the
+    application. Automatically created.
+
+  cwe
+    The plack environment in which the application is running. This is the
+    "PLACK_ENV" environment variable. Defaults to "development" unless
+    you've provided a specific value to "plackup" (via the "-E" switch or by
+    changing "PLACK_ENV" directly).
+
+CLASS METHODS
+  new( [ %attrs ] )
+    Creates a new instance of this class. None of the attributes are
+    required (in fact, you shouldn't pass most of them), but you will mostly
+    pass the "config" attribute, and possibly the "context_class" attribute.
+
+OBJECT METHODS
+  setup()
+    Meant to be overridden by applications, this is automatically called
+    right after the application has been initialized, so it is useful for
+    one-time initializations your application might need to perform. If not
+    overridden, this method does nothing.
+
+  handle( \%env )
+    Receives a Plack environment hash-ref of an HTTP request, creates a new
+    instance of the application's context class (most probably
+    Leyland::Context), performs HTTP negotiations and finds routes matching
+    the request. If any are found, the first one is invoked and an HTTP
+    response is generated and returned.
+
+    You should note that requests to paths that end with a slash will
+    automatically be redirected without the trailing slash.
+
+    This method will probably be called from "app.psgi".
+
+  has_localizer()
+    Returns a true value if the application has a localizer.
+
+  has_views()
+    Returns a true value if the application has any view classes.
+
+  has_routes()
+    Returns a true value if the application has any routes defined in its
+    controllers.
+
+INTERNAL METHODS
+    The following methods are only to be used internally.
+
+  BUILD()
+    Automatically called by Moose after instance creation, this method loads
+    the context class, application logger, localizer, controllers and views.
+    It then find all routes in the controllers, runs the application's
+    setup() method, and prints a nice info table to the log.
+
+  _handle_exception( $c, $exp )
+    Receives exceptions thrown by the application (including run-time
+    errors) and generates an HTTP response with the error information, in a
+    format recognizable by the client.
+
+  _default_config()
+    Returns a default configuration hash-ref.
+
+  _autolog( $msg )
+    Used by "Text::SpanningTable" when printing the application's info
+    table.
+
+  _initial_debug_info()
+    Prints an info table of the application after initialization.
+
+AUTHOR
+    Ido Perlmuter, "<ido at ido50.net>"
+
+BUGS
+    Please report any bugs or feature requests to "bug-Leyland at
+    rt.cpan.org", or through the web interface at
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Leyland>. I will be
+    notified, and then you'll automatically be notified of progress on your
+    bug as I make changes.
+
+SUPPORT
+    You can find documentation for this module with the perldoc command.
+
+            perldoc Leyland
+
+    You can also look for information at:
+
+    *   RT: CPAN's request tracker
+
+        <http://rt.cpan.org/NoAuth/Bugs.html?Dist=Leyland>
+
+    *   AnnoCPAN: Annotated CPAN documentation
+
+        <http://annocpan.org/dist/Leyland>
+
+    *   CPAN Ratings
+
+        <http://cpanratings.perl.org/d/Leyland>
+
+    *   Search CPAN
+
+        <http://search.cpan.org/dist/Leyland/>
+
+LICENSE AND COPYRIGHT
+    Copyright 2010-2011 Ido Perlmuter.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of either: the GNU General Public License as published
+    by the Free Software Foundation; or the Artistic License.
+
+    See http://dev.perl.org/licenses/ for more information.
+
