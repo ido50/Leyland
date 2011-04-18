@@ -2,65 +2,24 @@ NAME
     Leyland - Plack-based framework for RESTful web applications
 
 SYNOPSIS
-            # app.psgi:
-            # --------------------------------------------------------------
+            # in app.psgi:
+
             #!/usr/bin/perl -w
 
             use strict;
             use warnings;
             use MyApp;
-            use Plack::Builder;
 
             my $config = {
                     app => 'MyApp',
                     views => ['Tenjin'],
                     locales => './i18n',
-                    logger => {
-                            class => 'LogHandler',
-                            opts => {
-                                    outputs => [
-                                            file => {
-                                                    filename => "myapp.$ENV{PLACK_ENV}.log",
-                                                    minlevel => 0,
-                                                    maxlevel => 8,
-                                                    utf8 => 1,
-                                            },
-                                            screen => {
-                                                    log_to   => "STDERR",
-                                                    minlevel => 0,
-                                                    maxlevel => 8,
-                                            },
-                                    ]
-                            }
-                    },
-                    environments => {
-                            development => {
-                                    # options in here will override top level options when running in the development environment
-                            },
-                            deployment => {
-                                    # options in here will override top level options when running in the deployment environment
-                            },
-                    }
             };
 
             my $myapp = MyApp->new(config => $config);
 
             my $app = sub {
                     $myapp->handle(shift);
-            };
-
-            builder {
-                    # enable whatever Plack middlewares you wish here, a good example
-                    # would be the Session middleware.
-                    # --------------------------------------------------------------
-                    # the Static middleware will serve static files from the app's
-                    # public directory, remove it (or comment it) if your web server
-                    # is serving those files
-                    enable 'Static',
-                            path => qr{^/((images|js|css|fonts)/|favicon\.ico$|apple-touch-icon\.png$)},
-                            root => './public/';
-
-                    $app;
             };
 
 DESCRIPTION
@@ -139,10 +98,23 @@ DESCRIPTION
 
     *   Doesn't have a pony - You don't really need a pony, do you?
 
+  STATUS
+    Development of Leyland began August 2010. I have been using it
+    extensively for several projects, some of them already in production.
+    Therefore, the API has somewhat stabilized and I do not consider it in
+    alpha status. That said, Leyland still is immature, and I cannot
+    guarantee that API changes won't be made, nor that it is bug free or
+    even secure enough. If you're thinking of using Leyland for a production
+    project, please test it thoroughly beforehand.
+
   MANUAL / TUTORIAL / GUIDE / GIBBERISH
     To learn about using Leyland, please refer to the Leyland::Manual. The
     documentation of this distribution's classes is for reference only, the
     manual is where you're most likely to find your answers. Or not.
+
+  WHAT'S WITH THE NAME?
+    Leyland is named after Mr. Bean's clunker of a car - the British Leyland
+    Mini 1000. I don't know why.
 
 ATTRIBUTES
   config
