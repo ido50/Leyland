@@ -408,7 +408,7 @@ sub BUILD {
 	# init views, if any, start with view modules in the app
 	my @views = $self->_views || ();
 	# now load views defined in the config file
-	VIEW: foreach (@{$self->config->{views}}) {
+	VIEW: foreach (@{$self->config->{views} || []}) {
 		# have we already loaded this view in the first step?
 		foreach my $v ($self->_views) {
 			next VIEW if $v eq $_;
@@ -542,7 +542,7 @@ sub _initial_debug_info {
 	my $self = shift;
 
 	my @views;
-	foreach (sort @{$self->views}) {
+	foreach (sort @{$self->views || []}) {
 		my $view = ref $_;
 		$view =~ s/^Leyland::View:://;
 		push(@views, $view);
