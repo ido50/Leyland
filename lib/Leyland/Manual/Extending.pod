@@ -2,6 +2,87 @@
 
 Leyland::Manual::Extending - How to extend Leyland
 
+=head1 EXTENDING THE CONTEXT CLASS
+
+The context class (L<Leyland::Context>) constitutes the most of L<Leyland>'s
+API provided for your applications. It follows a request during its entire
+lifetime. It is very likely that you'd like that class to have attributes
+and methods which are specific to your application, such as an attribute
+that holds a database connection object for example.
+
+If so needed, Leyland gives you the ability to easily extend the base
+context class. Since it is L<Moose> based, you can create a class that
+C<extends> it, and tell Leyland to use it as the application's context class.
+
+For example, our application can have the following class:
+
+	package MyApp::Context;
+
+	use Moose;
+	use namespace::autoclean;
+
+	extends 'Leyland::Context';
+
+	has 'db' => (is => 'ro', isa => 'SomeDatabaseClass', writer => '_set_db');
+
+	around 'loc' => sub {
+		my ($orig, $self) = (shift, shift);
+
+		# change the behavior of the loc() method
+	};
+
+	__PACKAGE__->meta->make_immutable;
+
+And we can tell Leyland to use it as the context class when initiating an
+instance of our class in C<app.psgi>:
+
+	my $myapp = MyApp->new(config => $config, context_class => 'MyApp::Context');
+
+But how do you populate the C<db> attribute we see in the above example?
+Most likely with the root controller's C<auto()> method:
+
+	# MyApp/Controller/Root.pm
+	sub auto {
+		my ($self, $c) = @_;
+
+		$c->_set_db(SomeDatabaseClass->new);
+	}
+
+Of course, be careful if you decide to modify any of <Leyland::Context>'s
+methods.
+
+=head1 EXTENDING LEYLAND
+
+If you find that Leyland lacks support for your preferred CPAN modules,
+such as logging modules are template engines, you are more than welcome
+to create these classes by yourself. Logging classes are expected to be
+Moose classes that consume the L<Leyland::Logger> role. Refer to Leyland::Logger's
+documentation for information on how to create a logging class. You can
+also take a look on existing logging classes like L<Leyland::Logger::LogHandler>.
+
+The same goes for view classes. These are expected to consume L<Leyland::View>,
+which describes how view classes should be created. Look at L<Leyland::Tenjin>
+for an example.
+
+If you want to go even further, since Leyland is entirely Moose based,
+and you're crazy enough, you can use Moose tricks and modifications to
+make Leyland behave the way you want it, and maybe even create your own
+application framework on top of Leyland.
+
+=head1 HELPING WITH DEVELOPMENT
+
+You are more than welcome to help with the development of Leyland, even
+by simply submitting suggestions and bug reports. Refer to <Leyland/"BUGS">
+and <Leyland/"SUPPORT"> for more information on submitting bug reports.
+Leyland development is version controlled via GitHub, at L<http://github.com/ido50/Leyland>.
+If you're also using GitHub, feel free to fork Leyland, send me pull
+requests, etc.
+
+=head1 WHAT'S NEXT?
+
+This is the last stop of the Leyland manual. You can L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">
+if you wish.
+
 =head1 AUTHOR
 
 Ido Perlmuter, C<< <ido at ido50.net> >>

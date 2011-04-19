@@ -6,6 +6,11 @@ Leyland::Manual::Controllers - Creating Leyland controllers
 
 Ido Perlmuter, C<< <ido at ido50.net> >>
 
+=head1 WHAT'S NEXT?
+
+Read L<Leyland::Manual::Views> to learn how to create views and templates
+or L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">.
+
 =head1 BUGS
 
 Please report any bugs or feature requests to C<bug-Leyland at rt.cpan.org>, or through
