@@ -389,7 +389,7 @@ it to continue, simple use C<< return $c->forward('/somewhere') >>.
 At times, you'd have two or more routes sharing the exact same path, but
 each having a different HTTP method. In that case, it is unknown which
 route will be forwarded to. To force Leyland to forward to a route of a
-specific method, prefix C<$path> with the method name and a semicolon,
+specific method, prefix C<$path> with the method name and a colon,
 like so: C<< $c->forward('POST:/somehwere') >>.
 
 Note that if no routes are found, a 500 Internal Server Error will be

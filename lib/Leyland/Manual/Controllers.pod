@@ -106,8 +106,7 @@ and generates a response. Every route is built of six parts:
 
 =over
 
-=item 1. The HTTP request method the route handles, like GET or POST (see
-L</"REQUEST METHODS"> for more information).
+=item 1. The HTTP request method the route handles, like GET or POST.
 
 =item 2. A regular expression describing the URI paths the route matches
 (in string form).
@@ -118,8 +117,7 @@ separated by the '|' character).
 =item 4. A list of content types the route returns to clients (a string
 separated by the '|' character).
 
-=item 5. A list of rules described later (a string
-separated by the '|' character).
+=item 5. The route's type (external or internal, described later).
 
 =item 6. The route's logic (a plain Perl subroutine).
 
@@ -135,7 +133,33 @@ Let's look at a pretty complete example:
 The above route will only match GET requests whose path is exactly
 "/posts" (assuming we're on the root controller, or any controller that
 has an empty prefix). It will only accept text/html or application/json
-from the client, and will only return JSON.
+from the client, and will only return JSON. The following HTTP methods
+are available:
+
+=over
+
+=item * get: for GET requests. If you want your app to really be RESTful,
+get routes should be "safe", in that they should not change the state of
+the application. GET requests are as they're named: requests to I<get>
+data, not create/modify/delete data. Your clients need to rest assured
+application data will not be tampered as a result of GET requests.
+
+=item * put: for PUT requests.
+
+=item * post: for POST requests.
+
+=item * del: for DELETE requests.
+
+=item * any: will match any request method. Please don't use it. Really.
+But if you do, take into account that if a route that matches a certain
+path exists with the exact request method, and another routes matches the
+same path but with the 'any' method, then the exact route will take
+precedence.
+
+=back
+
+Read L<Leyland::Manual::FAQ> if you want to know how to fulfil C<OPTIONS>
+and C<HEAD> HTTP request methods.
 
 If your route doesn't define the "accepts" option, it will only accept
 text/html requests (and requests that don't have a content type). The same
@@ -162,6 +186,146 @@ As you've probably already noticed, the context object is automatically
 available to the route's subroutine. This is not the only variable available
 to subroutines - the controller object is also available as C<$self>, but
 is rarely used.
+
+The only thing that remains is actually writing your route logic. This is
+your field, but keep in mind you can use Leyland's logging facilities,
+exception facilities, etc., which are all described in other sections of
+this manual.
+
+=head1 HOW ARE PATHS MATCHED
+
+Route paths are regular expressions, which means a single route can match
+requests to different URI paths, like "/posts/159" and "/posts/160". Let's
+assume in this example we're talking about a route that loads an article
+that has a certain integer ID. Of course, if your route is going to load
+and return this article, it needs to know its integer ID. To do this, just
+use captures in the route's regex. Captures are provided to the route in
+the order they were defined. For example:
+
+	get '^/posts/(\d+)$' {
+		my $post_id = shift;
+		# now load post and return it
+	}
+
+	get '^/posts/(\d+)/comments/(\d+)$' {
+		my ($post_id, $comment_id) = @_;
+		...
+	}
+
+Be careful when defining route regexes that aren't strict (i.e. don't match
+from the beginning and/or to the end), like C<get 'posts'> for example,
+as you're likely to get the wrong results.
+
+=head1 RETURNING OUTPUT
+
+A route is supposed to generate the output that the client will receive.
+To learn about how to return output, read L<Leyland::Manual::Views> (which
+also describes Leyland's automatic data serialization).
+
+=head1 FORWARDING REQUESTS
+
+Often, you will find it useful to internally forward requests to other
+routes. These may be routes whose only purpose is to serve other routes.
+Forwarding is performed by the C<forward()> method of L<Leyland::Context>.
+It expects a path to forward to, and possibly a list of arguments to pass
+to the route:
+
+	$c->forward('/posts', $post->id);
+
+Some routes, as explained earlier, can only be forwarded to, and clients
+cannot directly access them. These are routes that are defined with the
+C<is 'internal'> rule in the route's declaration.
+
+When you forward a request to a different route, Leyland will not perform
+negotation with L<Leyland::Negotiator> like it does in the beginning of
+the request, but instead will only find the first route that matches the
+provided path and invoke it. So, theoretically, a POST route can forward
+to a GET route, Leyland won't care. At times, however, multiple routes,
+all accepting different HTTP methods, can match the same path. This can
+make it difficult to know which route is gonna be forwarded to, and you
+probably want to forward to a specific route. In this case, Leyland allows
+you to define the route's HTTP method, like so:
+
+	$c->forward('GET:/posts', $post->id);
+
+	get '^/posts$' is 'internal' {
+		my $post_id = shift;
+		# do stuff
+	}
+
+So what you need to do is prepend the HTTP method (in it's proper capitalization)
+and a colon to the path.
+
+When a request is forwarded to another route, it returns to the route that
+performed the forward (with the output it generated), so the route that
+performed the forward continues to operate. If you want to end processing
+immediately after the forward, C<return> it:
+
+	return $c->forward('GET:/posts', $post->id);
+
+When a forwarded route is matched, if its path regex had any captures in
+it, they will be provided as arguments to the route like any other route.
+If you've also provided other arguments via the C<forward()> method, they
+will also be available, but after the captures.
+
+An interesting thing about forwards, is that they return the output before
+serialization. So say you have an external route (i.e. not internal) that
+returns a Perl data structure. When directly matched, the data structure
+will be serialized and returned to the client. When internally forwarded
+to, however, the forwarding route will not get the serialized data, but
+the Perl data structure.
+
+Another thing to note about forwarding is that arguments you pass via the
+C<forward()> method are not considered part of the route's path. So, the
+following call:
+
+	$c->forward('/posts', $post_id);
+
+Will not match the C<^/posts/(\d+)$> route, but only the C<^/posts$> route.
+If you want to forward to the first one, you need to do this:
+
+	$c->forward('/posts/'.$post_id);
+
+You should keep that in mind as it can get confusing.
+
+=head1 PASSING REQUESTS
+
+When Leyland handles a request, it finds all the routes in the application
+that can satisfy it, and invokes the first one found. At times (rarely
+if at all), you might find that Leyland's decision isn't what you wanted.
+If that happens, you can use the C<pass()> method to pass the request to
+the next matching route:
+
+	if ($c->params->{something_that_tells_me_something})
+		$c->pass;
+	}
+
+Like C<forward()>, the passing route will not end processing, but will
+continue once the pass has been completed. To end processing immediately,
+use C<return>:
+
+	if ($c->params->{something_that_makes_sense_to_me})
+		return $c->pass;
+	}
+
+=head1 REDIRECTING REQUESTS
+
+HTTP redirects are frequent and common. I will not detail situations in
+which redirects are appropriate. Redirecting is easy - all you need to
+do is define a URI to redirect to in the response object (located under
+the "res" attribute of the context object):
+
+	$c->res->redirect($c->uri_for('/posts'));
+
+Note that you have to provide the absolute URI to redirect to, not a relative
+path.
+
+Once again, redirection does not happen immediately. Sometimes it is useful
+to set a redirect, and still continue handling the request and/or performing
+some other operations. If, however, you want to redirect immediately,
+use C<return>:
+
+	return $c->res->redirect($c->uri_for('/posts'));
 
 =head1 WHAT'S NEXT?
 
