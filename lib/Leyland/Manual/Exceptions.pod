@@ -86,7 +86,7 @@ When throwing an exception, do this:
 
 When this exception is thrown, if the client accepts HTML, then the C<error.html>
 view will be rendered, possibly into a layout template such as C<layouts/main.html>,
-unless you also pass C<< use_layouts => 0 >> to C<< $c->exception() >>.
+unless you also pass C<< use_layout => 0 >> to C<< $c->exception() >>.
 
 The result will be something like this:
 
@@ -130,7 +130,7 @@ C<< $c->res->redirect >>. At (rare) times, you might feel the need to throw
 a 3xx exception. In which case, also supply a "location" option to C<< $c->exception >>
 with the URI to redirect to:
 
-	$c->exception({ code => 303, error => "Please see the provide URI", location => $c->uri_for('/something') });
+	$c->exception({ code => 303, error => "Please see the provided URI", location => $c->uri_for('/something') });
 
 Again, don't do this unless you have a really good reason to.
 

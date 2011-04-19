@@ -22,7 +22,7 @@ two keys: "class", which defines the log class to use, and "opts", which
 is a hash-ref of options that are specific to the log class chosen.
 
 The three current log classes are L<LogDispatch|Leyland::Logger::LogDispatch>,
-L<LogHandler|Leyland::Logger::LogHandler> and <STDERR|Leyland::Logger::STDERR>
+L<LogHandler|Leyland::Logger::LogHandler> and L<STDERR|Leyland::Logger::STDERR>
 (the latter takes no arguments and is the default, so there's no need
 to define it if you want to use it). Refer to the documentation of the
 log class of your choice to learn about how to configure it. Here's a
@@ -43,7 +43,7 @@ Log::Dispatch example:
 		...
 	};
 
-As you can see, we are telling leyland that are log class is going to be
+As you can see, we are telling leyland that our log class is going to be
 L<Leyland::Logger::LogDispatch>, and that we want our log messages to be
 printed to the screen, and also to a file.
 
@@ -65,6 +65,11 @@ object and also to every context object:
 	}
 
 And that's pretty much it.
+
+=head1 BUT WAIT, WHY NOT USE PLACK'S LOG MIDDLEWARES?
+
+See L<Leyland::Manual::FAQ/"WHY AREN'T YOU USING PLACK'S LOGGING MIDDLEWARE?">
+for the answer.
 
 =head1 WHAT'S NEXT?
 

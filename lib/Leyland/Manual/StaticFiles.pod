@@ -5,13 +5,13 @@ Leyland::Manual::StaticFiles - How to serve static files from your application
 =head1 STATIC FILES
 
 Pretty much every web application has static files, i.e. files which are
-not generated dynamically. These are mostly CSS and JavaScript files,
-plus images and pictures.
+not generated dynamically. These are mostly CSS, JavaScript, images,
+videos, etc.
 
-How to server static files from your application depends on the way you
+How to serve static files from your application depends on the way you
 run the application and your personal preferences. During development and
 testing, when you're most likely to run your application by simply using
-C<plackup>, the easiest way to serve static files would be to let the
+C<plackup>, and the easiest way to serve static files would be to let the
 L<Static|Plack::Middleware::Static> middleware provided with L<Plack> do
 it. Simply add the following to the C<builder> section of C<app.psgi> (or
 create that section if it doesn't already exist):
@@ -29,9 +29,9 @@ create that section if it doesn't already exist):
 		$app;
 	};
 
-In C<builder>, we enable L<Plack::Middleware::Static>, and tell it serve
+In C<builder>, we enable L<Plack::Middleware::Static>, and tell it to serve
 any requests to paths that start with "images", "js" or "css" (plus the
-files "favicon.ico" and "apple-touch-icon.png") from the "public" directory
+files "favicon.ico" and "apple-touch-icon.png") from the "public/" directory
 of your application.
 
 When deploying your application, however, it is likely that you will run

@@ -2,7 +2,7 @@ package Leyland;
 
 # ABSTRACT: Plack-based framework for RESTful web applications
 
-our $VERSION = "0.001";
+our $VERSION = "0.001001";
 $VERSION = eval $VERSION;
 
 use Moose;
@@ -47,7 +47,7 @@ Leyland - Plack-based framework for RESTful web applications
 =head1 DESCRIPTION
 
 Leyland is a L<Plack>-based application framework for building truely
-RESTful, MVC web applications.
+RESTful, MVC-style web applications.
 
 "Another application framework?" you ask? Well yes! You see, after several
 years of L<Catalyst> development, I grew tired of Catalyst's bloat, and
@@ -60,9 +60,9 @@ the whole "context object" and some of Catalyst's other features,
 and simply couldn't get used to Dancer's whole
 functional syntax you're supposed to use inside your routes. While there
 were quite a few other options on CPAN, I didn't like any of them, plus
-pretty much none of them where native Plack frameworks, which for me is
-a big minus (can't blame them though as most of them predate Plack),
-so I decided to create my own framework, based on Plack, and
+pretty much none of them were native Plack frameworks, which for me is
+a bit of a minus (can't blame them though as most of them predate Plack),
+so I decided to create my own framework, based on Plack and
 designed to my liking. This is the mess that I've created. You will find
 that it mostly resembles Catalyst, while providing a syntax mostly similar
 to Dancer, but with a lot of crazy ideas of its own.
@@ -77,7 +77,7 @@ software architecture. Leyland applications perform real HTTP negotiations,
 (can) provide different representations of the same resource easily, respond
 with proper HTTP status codes, throw real HTTP exceptions, etc.
 
-=item * Automatic data (de)serialization - Leyland does the boring task
+=item * Automatic data (de)serialization - Leyland does by itself the boring task
 of serializing resources to representations in the format your client
 wants to receive, like JSON and XML. It will also deserialize JSON/XML
 requests to Perl data-structures automatically.
@@ -94,26 +94,26 @@ to the locale of the machine on which it is running. I find that this is
 rarely useful nor interesting to the application developer. Leyland localizes for
 the client, not the server. If the client wants to view your application
 (which may be a simple website) in Hebrew, and your application supports
-Hebrew, then you can easily provide him with Hebrew representations of
-your application's resources. Leyland uses L<Locale::Wolowitz> for this
-purpose.
+Hebrew, then you can easily provide him with Hebrew representations.
+Leyland uses L<Locale::Wolowitz> for this purpose.
 
 =item * Easy deployment and middleware support via L<Plack> - Leyland doesn't
 support Plack, it is dependant on it. Leyland's entire session support,
 for example, depends on Plack's L<Session|Plack::Middleware::Session>
 middleware. Use the full power of Plack in your Leyland application.
 
-=item * Less code, better programs - One thing I really hated in Catalyst
-is that I had to create stupid pointless classes that don't do anything
+=item * Less code, better programs - One thing I really hated about Catalyst
+was that I had to create stupid pointless classes that don't do anything
 but wrap a base class, just so I can have a new view class or something.
 While not as lightweight as Dancer, Leyland does a lot of the boring work
 for you, so you can concentrate more on your application.
 
 =item * Flexible, extensible, unbreakable - Well, it's not unbreakable,
-but Leyland was designed to be as flexible and as extensible as possible.
+but Leyland was designed to be as flexible and as extensible as possible - where
+flexibility matters, and strict - where constistency and convention are appropriate.
 Leyland goes to great lengths to give you the ability to do things the
 way you want to, and more importantly - the way your end-users want to.
-Your applications listen to your users preferences and automatically decide on a
+Your applications listen to your users' preferences and automatically decide on a
 suitable course of action. Leyland is also L<Moose> based, making it easy
 to extend and tweak its behavior.
 

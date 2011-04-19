@@ -27,7 +27,7 @@ if you're using L<DBIx::Class>, you can create your schema under the
 "Model" namespace like so:
 
 	# lib/MyApp/Model/DB.pm
-	package MyDB::Schema;
+	package MyApp::Model::DB;
 	use base qw/DBIx::Class::Schema/;
 
 	__PACKAGE__->load_namespaces();
@@ -130,7 +130,7 @@ under C<< $c->app->db >>.
 
 =head2 WHAT'S NEXT?
 
-Read L<Leyland::Manual::StaticFiles> to learn how to server static files
+Read L<Leyland::Manual::StaticFiles> to learn how to serve static files
 from your applications, or L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">.
 
 =head1 AUTHOR

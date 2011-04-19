@@ -30,7 +30,7 @@ serialize the data structure to the proper format and return that to the
 client.
 
 When a client sends your application JSON/XML data, Leyland can (and will,
-unless you explicitely tell it not to) deserialize the data into a Perl
+unless you explicitly tell it not to) deserialize the data into a Perl
 data structure, which will be available for you via C<< $c->data >>.
 
 If you need finer control over JSON/XML representations, you can still
@@ -50,7 +50,7 @@ and the output is returned to the client.
 
 Views in a Leyland application reside in the C<views/> directory, located
 in the top level of the application. In this directory, you might have
-files like "C<article.html>", "C<comment.html>", etc.
+files like C<article.html>, C<comment.html>, etc.
 
 The code that actually performs the rendering of a representation is the
 template engine, such as L<Tenjin>, L<Template::Toolkit>, L<HTML::Mason>,
@@ -76,7 +76,7 @@ Let's look at a simple example:
 		<body>[== $_content =]</body>
 	</html>
 
-When a controller renders C<index.html> for output, C<index.html> will
+When a controller renders C<index.html> for output, C<index.html>'s content will
 replace C<[== $_content =]> inside C<layouts/main.html> (this is
 Tenjin specific, other template engines will be different), and the final
 output will be:
@@ -106,7 +106,7 @@ but dynamic like the following example:
 In order to render this template, you need to provide the C<$name> variable.
 There are two ways to pass variables to templates: direct passing, and
 stash passing. The stash is a hash-ref that resides in the context object.
-You can items to it whenever you wish:
+You can add items to it whenever you wish (before rendering):
 
 	$c->stash->{name} = "Michael";
 	$c->template('index.html');
@@ -166,7 +166,7 @@ C<if> route and check what the client wants like this:
 	}
 
 But Leyland also gives you another option which is easier: you can return
-an array refernce with the following structure:
+an array reference with the following structure:
 
 	return [ \%mimes, \%context, $use_layout ];
 

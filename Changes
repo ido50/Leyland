@@ -1,4 +1,8 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	- Added Leyland::Manual::FAQ which was missing from the initial release
+	- Many fixes (mostly typos) to the manual
+
+0.001     2011-04-19 05:28:27 Asia/Jerusalem
 	- Initial release

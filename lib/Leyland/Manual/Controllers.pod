@@ -12,7 +12,7 @@ Every controller has one or more routes. A route is a path in your web
 application, like "/posts" or "/articles/139". Of course, it's much more
 than that, as explained by the L</"ROUTES"> section. Every controller
 also has a prefix. The prefix is prepended to the paths of all routes
-in the controller. So, if a controller has a prefix "/posts", and also
+in the controller. So, if a controller has a prefix "/posts", and
 a route with the path "/comments", then the actual path of the route would
 be "/posts/comments".
 
@@ -24,15 +24,15 @@ root route handles requests directly to C<http://example.com/>.
 
 Different controllers can share the same prefix, which is useful if you
 want to categorize your routes according to some common properties. Note,
-however, that two or more routes with the exact same declaration in two
+however, that when havin two or more routes with the exact same declaration in two
 or more controllers that share the same prefix, Leyland's behavior is
 undefined, so please avoid such situations.
 
 All controllers of your application should be located under the C<lib/MyApp/Controller/>
 directory of your application. Of course, you can nest controllers
-infinitely, Leyland won't care. A controller class is a L<Moose> class
-that consumes the L<Leyland::Controller> role.
+infinitely, Leyland won't care.
 
+A controller class is a L<Moose> class that consumes the L<Leyland::Controller> role.
 A minimal Leyland controller will look something like this:
 
 	package MyApp::Controller::Root;
@@ -68,7 +68,7 @@ and leading up to the controller that actually handles the request will
 be called in order. So, say a request to your application is to be
 handled by your C<MyApp::Controller::Posts::Comments> controller.
 In this case, Leyland will attempt to invoke the C<auto()> method of
-L<MyApp::Controller::Root>, then C<MyApp::Controller::Posts> (if exists),
+C<MyApp::Controller::Root>, then C<MyApp::Controller::Posts> (if exists),
 and finally C<MyApp::Controller::Posts::Comments>. The chain won't "break"
 if any of the controllers doesn't have an C<auto()> method, since every
 Leyland controller has a default C<auto()> method that doesn't do anything.
@@ -130,7 +130,7 @@ Let's look at a pretty complete example:
 		return { posts => \@posts };
 	}
 
-The above route will only match GET requests whose path is exactly
+The above route will only match C<GET> requests whose path is exactly
 "/posts" (assuming we're on the root controller, or any controller that
 has an empty prefix). It will only accept text/html or application/json
 from the client, and will only return JSON. The following HTTP methods
@@ -138,17 +138,17 @@ are available:
 
 =over
 
-=item * get: for GET requests. If you want your app to really be RESTful,
+=item * get: for C<GET> requests. If you want your app to really be RESTful,
 get routes should be "safe", in that they should not change the state of
-the application. GET requests are as they're named: requests to I<get>
+the application. C<GET> requests are as they're named: requests to I<get>
 data, not create/modify/delete data. Your clients need to rest assured
-application data will not be tampered as a result of GET requests.
+application data will not be tampered as a result of C<GET> requests.
 
-=item * put: for PUT requests.
+=item * put: for C<PUT> requests.
 
-=item * post: for POST requests.
+=item * post: for C<POST> requests.
 
-=item * del: for DELETE requests.
+=item * del: for C<DELETE> requests.
 
 =item * any: will match any request method. Please don't use it. Really.
 But if you do, take into account that if a route that matches a certain
@@ -162,14 +162,14 @@ Read L<Leyland::Manual::FAQ> if you want to know how to fulfil C<OPTIONS>
 and C<HEAD> HTTP request methods.
 
 If your route doesn't define the "accepts" option, it will only accept
-text/html requests (and requests that don't have a content type). The same
-goes for "returns". POST and PUT routes also automatically accept the
-application/x-www-form-urlencoded content type.
+C<text/html> requests (and requests that don't have a content type). The same
+goes for "returns". C<POST> and C<PUT> routes also automatically accept the
+C<application/x-www-form-urlencoded content> type.
 
 A route can also have the "is" option, which takes one of two values:
 "external", meaning clients can directly access this route (this is the
 default), or "internal", meaning clients cannot directly access this route,
-only external routes can forward to it:
+only other (possibly external) routes can forward to it.
 
 	post '^/posts$' returns 'application/json' {
 		my @posts = $c->forward('GET:/posts');

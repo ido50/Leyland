@@ -8,12 +8,12 @@ As previously mentioned, when RESTful applications receive a request from
 a client, they negotiate the request and decide on a course of action based
 on the client's preferences, such as media type. Leyland performs all these
 negotiations by itself, except for language negotiation. This decision was
-reached because language negotiation is quite impossibly, for two main
+made because language negotiation is quite impossible, for two main
 reasons:
 
 =over
 
-=item 1. In my experience, clients almost never send their preferred language as the HTTP
+=item 1. In my experience, clients almost never send their preferred language with the HTTP
 request header "Accept-Language", instead using query parameters and other
 options.
 
@@ -33,7 +33,7 @@ modules aren't really cut out for language negotiation. Their only purpose
 seems to be to localize your application to the locale of the system on
 which it is running, which is completely pointless when dealing with web
 applications. These are not desktop applications we're letting end-users
-install on their PCs with an interface of their native language. We are talking about
+install on their PCs with an interface written in their native language. We are talking about
 web applications, probably running on virtual servers located thousands
 of miles from your end-users. Who the hell cares about the locale of the
 system?
@@ -52,7 +52,7 @@ the documentation of L<Locale::Wolowitz> (don't worry, it's short and simple).
 
 To enable data localization with Locale::Wolowitz in Leyland applications,
 you need to add the "locales" configuration option to the C<$config> variable
-in C<app.psgi>. This options should hold the path to a directory in which
+in C<app.psgi>. This option should hold the path to a directory in which
 localization files of your applications reside (can be relative), such as
 C<i18n/> under your application's top level directory:
 
@@ -64,12 +64,15 @@ C<i18n/> under your application's top level directory:
 	};
 
 Once provided, Leyland will attempt to load all localization files located
-in this directory, and store a L<Locale::Wolowitz> object as the "loc"
-attribute of the context object. Then, you can use it like you would
-any Locale::Wolowitz object. For example:
+in this directory, and add a C<loc()> method to the context object. This
+method takes the string to localize, and a list of zero or more values to
+use as replacements (if the string has placeholders). For this method to
+actually localize, you need to set the language of the request, with
+C<< $c->set_lang() >>. For example:
 
 	# in one of your routes
 	get '^/$' {
+		$c->set_lang('es'); # use Spanish
 		$c->stash->{title} = $c->loc('Hello %1', $c->user->email_address);
 		$c->template('index.html');
 	}
@@ -77,7 +80,7 @@ any Locale::Wolowitz object. For example:
 	# in your views
 	<h1>[== $c->loc('Hello %1', $c->user->email_address);
 
-And that's pretty much it. Note that Leyland does not (and can't) localize
+And that's pretty much it. Note that Leyland does not (and cannot) localize
 the actual data of your application (such as database entries), that's
 your job of course.
 

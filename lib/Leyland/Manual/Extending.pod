@@ -48,7 +48,7 @@ Most likely with the root controller's C<auto()> method:
 		$c->_set_db(SomeDatabaseClass->new);
 	}
 
-Leyland also gives classes that extend Leyland::Context define a method
+Leyland also allows classes that extend Leyland::Context to define a method
 called C<finalize>. This method is called right before a response is sent
 to the client (but only before successful responses, not exceptions),
 after serialization (if performed). The method receives a reference to
@@ -63,40 +63,40 @@ the method is to allow it to modify it. A simple example would be:
 		$$ret =~ s/John/Michael/g;
 	}
 
-Of course, be careful if you decide to modify any of <Leyland::Context>'s
-methods.
+Of course, be careful if you decide to modify any of L<Leyland::Context>'s
+methods so as not to break its behavior.
 
 =head1 EXTENDING LEYLAND
 
 If you find that Leyland lacks support for your preferred CPAN modules,
-such as logging modules are template engines, you are more than welcome
+such as logging modules or template engines, you are more than welcome
 to create these classes by yourself. Logging classes are expected to be
 Moose classes that consume the L<Leyland::Logger> role. Refer to Leyland::Logger's
 documentation for information on how to create a logging class. You can
 also take a look on existing logging classes like L<Leyland::Logger::LogHandler>.
 
 The same goes for view classes. These are expected to consume L<Leyland::View>,
-which describes how view classes should be created. Look at L<Leyland::Tenjin>
+which describes how view classes should be created. Look at L<Leyland::View::Tenjin>
 for an example.
 
 If you want to go even further, since Leyland is entirely Moose based,
-and you're crazy enough, you can use Moose tricks and modifications to
+and if you're crazy enough, you can use Moose tricks and modifications to
 make Leyland behave the way you want it, and maybe even create your own
 application framework on top of Leyland.
 
 =head1 HELPING WITH DEVELOPMENT
 
 You are more than welcome to help with the development of Leyland, even
-by simply submitting suggestions and bug reports. Refer to <Leyland/"BUGS">
-and <Leyland/"SUPPORT"> for more information on submitting bug reports.
+by simply submitting suggestions and bug reports. Refer to L<Leyland/"BUGS">
+and L<Leyland/"SUPPORT"> for more information on submitting bug reports.
 Leyland development is version controlled via GitHub, at L<http://github.com/ido50/Leyland>.
 If you're also using GitHub, feel free to fork Leyland, send me pull
 requests, etc.
 
 =head1 WHAT'S NEXT?
 
-This is the last stop of the Leyland manual. You can L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">
-if you wish.
+Refer to L<Leyland::Manual::FAQ> for frequently asked questions and
+their answers, or L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">.
 
 =head1 AUTHOR
 
