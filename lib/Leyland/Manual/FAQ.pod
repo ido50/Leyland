@@ -2,25 +2,29 @@
 
 Leyland::Manual::FAQ - Frequently asked questions about Leyland
 
-=head1 HOW CAN I MAKE MY APP ANSWER "OPTIONS" REQUESTS?
+=head1 HOW?
 
-The HTTP "OPTIONS" request method is used by clients to ask a server what
-are the HTTP methods they can perform on a certain resource. The server
-is supposed to answer with the response header "Allow", containing a list
-of valid methods, like "GET, POST, PUT".
+=head2 HOW CAN I MAKE MY APP ANSWER "OPTIONS" REQUESTS?
+
+The HTTP C<OPTIONS> request method is used by clients to ask a server what
+are the HTTP methods they can perform on a certain resource (or URI path
+if you will). The server is supposed to answer with the response header
+"Allow", containing a list of valid methods, like "GET, POST, PUT".
 
 The good news for you is that L<Leyland> already does this automatically for
-you. When it receives an OPTIONS request to a certain resource, it finds
+you. When it receives an C<OPTIONS> request to a certain resource, it finds
 out all methods supported by it, and returns a proper answer to the client.
 
 =head1 HOW CAN I MAKE MY APP ANSWER "HEAD" REQUESTS?
 
-The HTTP "HEAD" request method is exactly similar to "GET", except only
+The HTTP C<HEAD> request method is exactly similar to C<GET>, except only
 the response headers are returned, without the response body. If you want
 to add support for HEAD requests in your Leyland applications, add the
 L<Head|Plack::Middleware::Head> Plack middleware to C<app.psgi>.
 
-=head1 WHY AREN'T YOU USING PLACK'S LOGGING MIDDLEWARE?
+=head1 WHY?
+
+=head2 WHY AREN'T YOU USING PLACK'S LOGGING MIDDLEWARES?
 
 As you may know, L<Plack> has some logging middlewares, like L<Plack::Middleware::LogDispatch>,
 which provide PSGI applications with a logger. I really wanted to transfer
