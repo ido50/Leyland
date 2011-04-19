@@ -193,8 +193,8 @@ sub _prefs_and_routes {
 	my $pref_routes = [{ prefix => '', route => $path }];
 	my ($prefix) = ($path =~ m!^(/[^/]+)!);
 	my $route = $' || '/';
-	my $i = 0; # counter to prevent infinite loops, probably should removed
-	while ($prefix && $i < 100) {
+	my $i = 0; # counter to prevent infinite loops, probably should be removed
+	while ($prefix && $i < 1000) {
 		push(@$pref_routes, { prefix => $prefix, route => $route });
 		
 		my ($suffix) = ($route =~ m!^(/[^/]+)!);

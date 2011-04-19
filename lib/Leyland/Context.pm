@@ -483,7 +483,7 @@ sub uri_for {
 	return $uri;
 }
 
-=head2 finalize( $ret )
+=head2 finalize( \$ret )
 
 This method is meant to be overridden by classes that extend this class,
 if used in your application. It is automatically called after the route

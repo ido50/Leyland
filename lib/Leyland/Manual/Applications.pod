@@ -92,7 +92,7 @@ The controllers are those that handle an incoming request and return a
 response. A Leyland application must have a root controller, called C<Root.pm>.
 A minimal controller will look something like this:
 
-	package Dribblist::Controller::Root;
+	package MyApp::Controller::Root;
 
 	use Moose;
 	use Leyland::Parser;

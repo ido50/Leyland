@@ -70,7 +70,7 @@ sub add_route {
 		}
 	}
 	push(@{$rules->{accepts}}, 'application/x-www-form-urlencoded')
-		if ($method eq 'post' && !$xwfu);
+		if (($method eq 'post' || $method eq 'put') && !$xwfu);
 
 	my $routes = $class->has_routes ? $class->routes : Tie::IxHash->new;
 	

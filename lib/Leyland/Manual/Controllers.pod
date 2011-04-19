@@ -2,14 +2,175 @@
 
 Leyland::Manual::Controllers - Creating Leyland controllers
 
-=head1 AUTHOR
+=head1 CONTROLLERS
 
-Ido Perlmuter, C<< <ido at ido50.net> >>
+Controllers are the main building blocks of your application. They define
+the resources available to clients and perform whatever logic your application
+needs to perform.
+
+Every controller has one or more routes. A route is a path in your web
+application, like "/posts" or "/articles/139". Of course, it's much more
+than that, as explained by the L</"ROUTES"> section. Every controller
+also has a prefix. The prefix is prepended to the paths of all routes
+in the controller. So, if a controller has a prefix "/posts", and also
+a route with the path "/comments", then the actual path of the route would
+be "/posts/comments".
+
+Every Leyland application has a root controller. This controller has an
+empty prefix, so all of its routes are top level. This controller will hold
+the root route, which has no path (or more correctly has the "/" path).
+If your application is located under C<http://example.com/>, then the
+root route handles requests directly to C<http://example.com/>.
+
+Different controllers can share the same prefix, which is useful if you
+want to categorize your routes according to some common properties. Note,
+however, that two or more routes with the exact same declaration in two
+or more controllers that share the same prefix, Leyland's behavior is
+undefined, so please avoid such situations.
+
+All controllers of your application should be located under the C<lib/MyApp/Controller/>
+directory of your application. Of course, you can nest controllers
+infinitely, Leyland won't care. A controller class is a L<Moose> class
+that consumes the L<Leyland::Controller> role.
+
+A minimal Leyland controller will look something like this:
+
+	package MyApp::Controller::Root;
+
+	use Moose;
+	use Leyland::Parser;
+	use namespace::autoclean;
+
+	with 'Leyland::Controller';
+
+	prefix { '' }
+
+	get '^/$' {
+		$c->template('index.html');
+	}
+	
+	__PACKAGE__->meta->make_immutable;
+
+This controller, which is an application's root controller, has an empty
+prefix (non-root controllers will have prefixes that start with a slash,
+like "/posts"), and one root route for GET requests. The next section
+describes routes.
+
+A controller class is also allowed to have any or all of the following
+methods:
+
+=head2 auto( $self, $c )
+
+This method is called at the beginning of every request, before it is
+handled by the proper route. The thing about the C<auto()> method is that
+every C<auto()> method in the chain starting from the root controller
+and leading up to the controller that actually handles the request will
+be called in order. So, say a request to your application is to be
+handled by your C<MyApp::Controller::Posts::Comments> controller.
+In this case, Leyland will attempt to invoke the C<auto()> method of
+L<MyApp::Controller::Root>, then C<MyApp::Controller::Posts> (if exists),
+and finally C<MyApp::Controller::Posts::Comments>. The chain won't "break"
+if any of the controllers doesn't have an C<auto()> method, since every
+Leyland controller has a default C<auto()> method that doesn't do anything.
+
+=head2 pre_route( $self, $c )
+
+This method is very similar to the C<auto()> method. It is also called
+before the request is handled by its proper route, but after the C<auto()>
+method, and only the C<pre_route()> method of the actuall controller is
+invoked.
+
+=head2 pre_template( $self, $c, $tmpl_name, [ \%context, $use_layout ] )
+
+This method is called right before a view/template is rendered (i.e. when
+you call C<< $c->template() >>. It receives the context object (C<$c>),
+and whatever arguments you've passed to C<< $c->template() >>. If you
+find it useful, knock yourself out, personally I do not use it.
+
+=head2 post_route( $self, $c, \$ret )
+
+This method is called after a response was generated, but before it is
+returned to the client. It receives the context object (C<$c>), and a reference
+to the returned output (which is a scalar). The reason a reference is provided
+is to allow you to modify it before sending. If you need to modify the
+response for every controller and not just on a per-controller basis,
+take a look at the C<finalize()> method of L<Leyland::Context> (read
+L<Leyland::Manual::Extending> to learn how to define this method), which
+is exactly the same, but called after C<post_route()> and for every
+request.
+
+=head1 ROUTES
+
+The route, as previousely mentioned, is what actually handles a request
+and generates a response. Every route is built of six parts:
+
+=over
+
+=item 1. The HTTP request method the route handles, like GET or POST (see
+L</"REQUEST METHODS"> for more information).
+
+=item 2. A regular expression describing the URI paths the route matches
+(in string form).
+
+=item 3. A list of content types the route accepts from the client (a string
+separated by the '|' character).
+
+=item 4. A list of content types the route returns to clients (a string
+separated by the '|' character).
+
+=item 5. A list of rules described later (a string
+separated by the '|' character).
+
+=item 6. The route's logic (a plain Perl subroutine).
+
+=back
+
+Let's look at a pretty complete example:
+
+	get '^/posts$' accepts 'text/html|application/json' returns 'application/json' {
+		my @posts = MyDatabase->load_posts();
+		return { posts => \@posts };
+	}
+
+The above route will only match GET requests whose path is exactly
+"/posts" (assuming we're on the root controller, or any controller that
+has an empty prefix). It will only accept text/html or application/json
+from the client, and will only return JSON.
+
+If your route doesn't define the "accepts" option, it will only accept
+text/html requests (and requests that don't have a content type). The same
+goes for "returns". POST and PUT routes also automatically accept the
+application/x-www-form-urlencoded content type.
+
+A route can also have the "is" option, which takes one of two values:
+"external", meaning clients can directly access this route (this is the
+default), or "internal", meaning clients cannot directly access this route,
+only external routes can forward to it:
+
+	post '^/posts$' returns 'application/json' {
+		my @posts = $c->forward('GET:/posts');
+		# do stuff with @posts
+	}
+
+	get '^/posts$' returns 'application/json' is 'internal' {
+		return MyDatabase->load_posts();
+	}
+
+More about forwarding later on.
+
+As you've probably already noticed, the context object is automatically
+available to the route's subroutine. This is not the only variable available
+to subroutines - the controller object is also available as C<$self>, but
+is rarely used.
 
 =head1 WHAT'S NEXT?
 
 Read L<Leyland::Manual::Views> to learn how to create views and templates
 or L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">.
+
+=head1 AUTHOR
+
+Ido Perlmuter, C<< <ido at ido50.net> >>
 
 =head1 BUGS
 

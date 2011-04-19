@@ -48,6 +48,21 @@ Most likely with the root controller's C<auto()> method:
 		$c->_set_db(SomeDatabaseClass->new);
 	}
 
+Leyland also gives classes that extend Leyland::Context define a method
+called C<finalize>. This method is called right before a response is sent
+to the client (but only before successful responses, not exceptions),
+after serialization (if performed). The method receives a reference to
+the returned output (which will be scalar). The reason a reference is passed to
+the method is to allow it to modify it. A simple example would be:
+
+	# MyApp/Context.pm
+	...
+	sub finalize {
+		my ($c, $ret) = @_;
+
+		$$ret =~ s/John/Michael/g;
+	}
+
 Of course, be careful if you decide to modify any of <Leyland::Context>'s
 methods.
 
