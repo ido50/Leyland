@@ -336,7 +336,7 @@ L<http://cpanratings.perl.org/d/[== $app_name =]>
 
 L<http://search.cpan.org/dist/[== $app_name =]/>
 
-=back
+!=back
 
 !=head1 LICENSE AND COPYRIGHT
 
@@ -395,7 +395,7 @@ get '^/$' {
 
 !=head2 auto( $c )
 
-=cut
+!=cut
 
 sub auto {
 	my ($self, $c) = @_;
@@ -487,7 +487,7 @@ L<http://cpanratings.perl.org/d/[== $app_name =]>
 
 L<http://search.cpan.org/dist/[== $app_name =]/>
 
-=back
+!=back
 
 !=head1 LICENSE AND COPYRIGHT
 

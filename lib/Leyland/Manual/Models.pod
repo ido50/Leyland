@@ -4,7 +4,7 @@ Leyland::Manual::Models - How to use models in Leyland applications
 
 =head1 LEYLAND AND MODELS
 
-As mentioned in L<Leyland::Manual::Applications, L<Leyland> does not
+As mentioned in L<Leyland::Manual::Applications>, L<Leyland> does not
 concern itself with the models of your app. Why would it really? Your
 models can be anything, and it's your decision how to use them. If you're
 familiar with L<Catalyst>, you'd know that in Catalyst, you create model

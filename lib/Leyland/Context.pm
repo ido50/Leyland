@@ -499,9 +499,11 @@ The default C<finalize()> method provided by this class does not do anything.
 
 sub finalize { 1 } # meant to be overridden
 
-# -------------------------------------------------------------------- #
-# INTERNAL METHODS --------------------------------------------------- #
-# -------------------------------------------------------------------- #
+=head1 INTERNAL METHODS
+
+The following methods are only to be used internally:
+
+=cut
 
 sub _build_res { shift->new_response(200, [ 'Content-Type' => 'text/html' ]) }
 
@@ -691,11 +693,19 @@ sub _structure {
 	}
 }
 
+=head2 FOREIGNBUILDARGS( \%args )
+
+=cut
+
 sub FOREIGNBUILDARGS {
 	my ($class, %args) = @_;
 
 	return ($args{env});
 }
+
+=head2 BUILD()
+
+=cut
 
 sub BUILD { shift->_log_request }
 
