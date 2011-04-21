@@ -1,6 +1,7 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	- Leyland will not automatically encode('UTF-8') when output is binary
 	- Some more documentation fixes
 
 0.001001  2011-04-19 17:47:23 Asia/Jerusalem

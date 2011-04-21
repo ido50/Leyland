@@ -10,6 +10,7 @@ use Carp;
 use Data::Dumper;
 use JSON::Any;
 use Leyland::Exception;
+use MIME::Types;
 use Module::Load;
 use Text::SpanningTable;
 use Try::Tiny;
@@ -549,7 +550,9 @@ sub _respond {
 	$self->res->status($status) if $status && $status =~ m/^\d+$/;
 	$self->res->headers($headers) if $headers && ref $headers eq 'HASH';
 	if ($content) {
-		my $body = Encode::encode('UTF-8', $content);
+		my $mimetypes = MIME::Types->new;
+		my MIME::Type $mime = $mimetypes->type($self->res->content_type);
+		my $body = $mime->isAscii ? Encode::encode('UTF-8', $content) : $content;
 		$self->res->body($body);
 		$self->res->content_length(length($body));
 	}
