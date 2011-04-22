@@ -1,6 +1,12 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	- Developers can now create routes that return any media type
+	  by setting "returns '*/*'" in the route declaration
+	- The check for returned content's type (ascii or binary) now falls
+	  back to simple match against qr!^text/! when mime type isn't found
+
+0.001002  2011-04-22 03:00:35 Asia/Jerusalem
 	- Leyland will not automatically encode('UTF-8') when output is binary
 	- Some more documentation fixes
 

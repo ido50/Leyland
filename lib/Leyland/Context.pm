@@ -552,7 +552,7 @@ sub _respond {
 	if ($content) {
 		my $mimetypes = MIME::Types->new;
 		my MIME::Type $mime = $mimetypes->type($self->res->content_type);
-		my $body = $mime->isAscii ? Encode::encode('UTF-8', $content) : $content;
+		my $body = (($mime && $mime->isAscii) || $self->res->content_type =~ m!^text/!) ? Encode::encode('UTF-8', $content) : $content;
 		$self->res->body($body);
 		$self->res->content_length(length($body));
 	}

@@ -314,6 +314,13 @@ sub _negotiate_return_media {
 	my $routes = [];
 	
 	ROUTE: foreach (@$all_routes) {
+		# does this route return any media type?
+		if ($_->{rules}->{returns_all}) {
+			$_->{media} = '*/*';
+			push(@$routes, $_);
+			next ROUTE;
+		}
+
 		# what media types does this route return?
 		my @have = exists $_->{rules}->{returns} ? 
 			@{$_->{rules}->{returns}} :
