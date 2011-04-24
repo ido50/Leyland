@@ -2,7 +2,7 @@ package Leyland;
 
 # ABSTRACT: Plack-based framework for RESTful web applications
 
-our $VERSION = "0.001003";
+our $VERSION = "0.001004";
 $VERSION = eval $VERSION;
 
 use Moose;
@@ -482,6 +482,12 @@ sub _handle_exception {
 		$c->res->redirect($exp->location);
 		return $c->_respond($exp->code);
 	}
+
+	# are we on the development environment? if so, and the exception
+	# has no mimes, we croak with a simple error message so that Plack
+	# displays a nice stack trace
+	croak $self->name.' croaked with HTTP status code '.$exp->code.' and error message "'.$err.'"'
+		if $self->cwe eq 'development' && !$exp->has_mimes;
 
 	# do we have templates for any of the client's requested MIME types?
 	# if so, render the first one you find.

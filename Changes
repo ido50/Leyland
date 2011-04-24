@@ -1,6 +1,12 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	- When on the development environment, Leyland let's exceptions
+	  that do not define MIME templates be handled by Plack's nice
+	  stacktrace middleware (which is automatically enabled on the
+	  development environment)
+
+0.001003  2011-04-22 22:29:11 Asia/Jerusalem
 	- Developers can now create routes that return any media type
 	  by setting "returns '*/*'" in the route declaration
 	- The check for returned content's type (ascii or binary) now falls
