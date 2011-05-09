@@ -300,7 +300,7 @@ sub handle {
 				# we need to pass to the next matching route.
 				# first, let's erase the pass flag from the context
 				# so we don't try to do this infinitely
-				$c->_pass(0);
+				$c->_set_pass_next(0);
 				# no let's invoke the route
 				$ret = $c->_invoke_route;
 			}
