@@ -14,7 +14,7 @@ If you're not that familiar with HTTP status codes, please read Wikipedia's
 L<list of HTTP status codes|https://secure.wikimedia.org/wikipedia/en/w/index.php?title=List_of_HTTP_status_codes&oldid=424349307>
 first.
 
-Usuaully, when everything is okay, your application will return a "200 OK"
+Usually, when everything is okay, your application will return a "200 OK"
 responses, or "201 Created" responses when new content was created because
 of a request, or basically any other 2xx family status. When your application
 wants to redirect a request, it will return one of the 3xx status codes.
