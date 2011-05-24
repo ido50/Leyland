@@ -402,16 +402,24 @@ sub BUILD {
 	# require Module::Pluggable and load all views and controllers
 	# with it
 	load Module::Pluggable;
-	Module::Pluggable->import(search_path => [$self->config->{app}.'::View'], sub_name => '_views', require => 1);
-	Module::Pluggable->import(search_path => [$self->config->{app}.'::Controller'], sub_name => 'controllers', require => 1);
+	Module::Pluggable->import(
+		search_path => [$self->config->{app}.'::View'],
+		sub_name => '_views',
+		instantiate => 'new'
+	);
+	Module::Pluggable->import(
+		search_path => [$self->config->{app}.'::Controller'],
+		sub_name => 'controllers',
+		require => 1
+	);
 
 	# init views, if any, start with view modules in the app
-	my @views = $self->_views || ();
+	my @views = $self->_views;
 	# now load views defined in the config file
 	VIEW: foreach (@{$self->config->{views} || []}) {
 		# have we already loaded this view in the first step?
 		foreach my $v ($self->_views) {
-			next VIEW if $v eq $_;
+			next VIEW if blessed($v) eq $_;
 		}
 
 		# attempt to load this view
