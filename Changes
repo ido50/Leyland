@@ -1,6 +1,10 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	- Fixed bugs when loading app-specific view classes [thanks Sebastian Knapp (@giftnuss)]
+	- Small documentation fixes
+
+0.001004  2011-05-09 19:55:59 Asia/Jerusalem
 	- Fixed bug with passing requests (using $c->pass)
 	- When on the development environment, Leyland let's exceptions
 	  that do not define MIME templates be handled by Plack's nice

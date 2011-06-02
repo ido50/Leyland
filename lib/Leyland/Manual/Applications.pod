@@ -6,37 +6,37 @@ Leyland::Manual::Applications - Leyland application structure and creation
 
 Leyland application structure is a fusion of the L<Catalyst> and L<Dancer>
 application structures. The following is the basic structure of a Leyland
-application (note that directories marked "(optional)" are pure suggestions
-or examples, and are not integral to a Leyland application, which can perfectly live
-without them):
+application. Note that other than files and directories marked "(required)",
+everything else you see is purely a suggestion or an example and is not
+integral to a Leyland application, which can perfectly live without it.
 
 	|- /
-	|----- app.psgi
-	|----- lib/
-	|-------- MyApp.pm
-	|-------- MyApp/
-	|----------- Context.pm (optional)
-	|----------- Controller/
-	|-------------- Root.pm
+	|----- app.psgi (required)
+	|----- lib/ (required)
+	|-------- MyApp.pm (required)
+	|-------- MyApp/ (required)
+	|----------- Context.pm
+	|----------- Controller/ (required)
+	|-------------- Root.pm (required)
 	|-------------- SomeOtherController.pm
 	|-------------- SomeOtherController/
 	|----------------- Admin.pm
-	|----------- Model/ (optional)
-	|----------- View/ (optional)
-	|----- public/ (optional)
-	|-------- css/ (optional)
-	|-------- js/ (optional)
-	|-------- images/ (optional)
-	|----- views/
-	|-------- index.html
-	|-------- layouts/
-	|----------- main.html
-	|----- i18n/ (optional)
+	|----------- Model/
+	|----------- View/
+	|----- public/
+	|-------- css/
+	|-------- js/
+	|-------- images/
+	|----- views/ (required)
+	|-------- index.html (required)
+	|-------- layouts/ (required)
+	|----------- main.html (required)
+	|----- i18n/
 	|-------- es.json
 	|-------- he_and_it.coll.json
 
 The C<app.psgi> file is a standard L<PSGI> application that configures and
-initializes the Leyland application, possibly adds L<Plack> middlewares,
+initializes the Leyland application; possibly adds L<Plack> middlewares;
 and lets Leyland handle incoming requests. A minimal C<app.psgi> file
 will look something like this:
 
@@ -133,8 +133,9 @@ for views/templates. Since Leyland is designed for web applications, pretty
 much every Leyland application will have a public directory, though it
 doesn't have to be called "public", nor does it need to contain the directories
 in the above example ("css", "js" and "images"). Static files are not
-handled by Leyland directly. Instead, Leyland relies on L<Plack::Middleware::Static>
-to serve those files. More information about static files in L<Leyland::Manual::StaticFiles>.
+handled by Leyland directly. Instead, Leyland either relies on L<Plack::Middleware::Static>
+to serve those files, or on a front-line web server such as Apache, nginx,
+lighttpd or cherokee. More information about static files in L<Leyland::Manual::StaticFiles>.
 
 The C<views/> directory is where your views and templates reside. These will
 mostly be HTML templates, but can actually be anything, even JSON or XML

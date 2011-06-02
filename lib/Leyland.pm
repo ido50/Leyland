@@ -2,7 +2,7 @@ package Leyland;
 
 # ABSTRACT: Plack-based framework for RESTful web applications
 
-our $VERSION = "0.001004";
+our $VERSION = "0.001005";
 $VERSION = eval $VERSION;
 
 use Moose;
@@ -56,16 +56,15 @@ to create truely RESTful applications. I then moved for a short while to
 L<Dancer>, which had a nice syntax for defining routes and had at least some REST properties,
 but I quickly found it didn't fit my needs as well, and that it also made
 it very difficult to write truely RESTful applications. I also really missed
-the whole "context object" and some of Catalyst's other features,
-and simply couldn't get used to Dancer's whole
-functional syntax you're supposed to use inside your routes. While there
-were quite a few other options on CPAN, I didn't like any of them, plus
-pretty much none of them were native Plack frameworks, which for me is
-a bit of a minus (can't blame them though as most of them predate Plack),
-so I decided to create my own framework, based on Plack and
-designed to my liking. This is the mess that I've created. You will find
-that it mostly resembles Catalyst, while providing a syntax mostly similar
-to Dancer, but with a lot of crazy ideas of its own.
+Catalyst's "context object" and some of its other features, and simply
+couldn't get used to Dancer's whole functional syntax you're supposed to
+use inside your routes. While there were quite a few other options on CPAN,
+I didn't like any of them, plus pretty much none of them were native Plack
+frameworks, which for me is a bit of a minus (can't blame them though as
+most of them predate Plack), so I decided to create my own framework,
+based on Plack and designed to my liking. This is the mess that I've created.
+You will find that it mostly resembles Catalyst, while providing a syntax
+mostly similar to Dancer, but with a lot of crazy ideas of its own.
 
 =head2 FEATURES
 
@@ -646,6 +645,18 @@ $Leyland::CODES = {
 =head1 AUTHOR
 
 Ido Perlmuter, C<< <ido at ido50.net> >>
+
+=head1 ACKNOWLEDGMENTS
+
+I wish to thank the following people:
+
+=over
+
+=item * L<http://search.cpan.org/~sknpp/|Sebastian Knapp> for submitting bug fixes
+
+=item * L<http://search.cpan.org/~mdorman/|Michael Alan Dorman> for some helpful ideas
+
+=back
 
 =head1 BUGS
 

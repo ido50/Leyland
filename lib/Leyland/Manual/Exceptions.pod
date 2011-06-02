@@ -127,7 +127,8 @@ Honestly.
 One type of exception you might find useful, however, is a redirecting
 exception, of the 3xx family. Usually, you should redirect requests using
 C<< $c->res->redirect >>. At (rare) times, you might feel the need to throw
-a 3xx exception. In which case, also supply a "location" option to C<< $c->exception >>
+a 3xx exception (this can most likely happen in C<auto()> and C<pre_route()>
+methods). In which case, also supply a "location" option to C<< $c->exception >>
 with the URI to redirect to:
 
 	$c->exception({ code => 303, error => "Please see the provided URI", location => $c->uri_for('/something') });
