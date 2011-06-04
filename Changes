@@ -1,6 +1,10 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	- Enforcing MooseX::ClassAttribute version 0.24 as previous versions
+	  seem to cause problems
+
+0.001005  2011-06-02 23:42:27 Asia/Jerusalem
 	- Fixed bugs when loading app-specific view classes [thanks Sebastian Knapp (@giftnuss)]
 	- Small documentation fixes
 

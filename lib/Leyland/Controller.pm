@@ -3,7 +3,7 @@ package Leyland::Controller;
 # ABSTRACT: Leyland controller base class
 
 use Moose::Role;
-use MooseX::ClassAttribute;
+use MooseX::ClassAttribute 0.24;
 use namespace::autoclean;
 
 =head1 NAME
