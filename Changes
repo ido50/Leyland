@@ -1,7 +1,9 @@
 Revision history for Leyland
 
 {{$NEXT}}
-	- Enforcing MooseX::ClassAttribute version 0.24 as previous versions
+	- When forwarding internally (with $c->forward), requests to pass
+	  requests are now honored
+	- Forcing MooseX::ClassAttribute version 0.24 as previous versions
 	  seem to cause problems
 
 0.001005  2011-06-02 23:42:27 Asia/Jerusalem

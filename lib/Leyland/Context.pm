@@ -105,8 +105,18 @@ more than one).
 =head2 current_route
 
 The index of the route to be invoked in the "routes" attribute above. By
-default this would be the first route (i.e. index 0), unless <pass>es are
+default this would be the first route (i.e. index 0), unless C<pass>es are
 performed.
+
+=head2 froutes
+
+An array reference of all routes matched by an internal forward.
+
+=head2 current_froute
+
+The index of the route to be forwarded to in the "froutes" attribute above.
+By default this would be the first route (i.e. index 0), unless C<pass>es
+are performed.
 
 =head2 controller
 
@@ -172,6 +182,10 @@ has 'routes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_route
 
 has 'current_route' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_current_route');
 
+has 'froutes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_froutes', writer => '_set_froutes', clearer => '_clear_froutes');
+
+has 'current_froute' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_current_froute');
+
 has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
 
 has 'wanted_mimes' => (is => 'ro', isa => 'ArrayRef[HashRef]', builder => '_build_mimes');
@@ -234,6 +248,10 @@ sub views { shift->app->views }
 =head2 has_routes()
 
 Returns a true value if the request matched any routes.
+
+=head2 has_froutes()
+
+Returns a true value if the request has routes matched in an internal forward.
 
 =head2 set_lang( $lang )
 
@@ -313,8 +331,13 @@ in your routes to do so.
 sub pass {
 	my $self = shift;
 
-	# do not allow passing if we don't have routes to pass to
-	if ($self->current_route + 1 < scalar @{$self->routes}) {
+	# are we passing inside an internal forward or externally?
+	# in any case, do not allow passing if we don't have routes to pass to
+	if ($self->has_froutes && $self->current_froute + 1 < scalar @{$self->froutes}) {
+		$self->_set_current_froute($self->current_froute + 1);
+		$self->_set_pass_next(1);
+		return 1;
+	} elsif (!$self->has_froutes && $self->current_route + 1 < scalar @{$self->routes}) {
 		$self->_set_current_route($self->current_route + 1);
 		$self->_set_pass_next(1);
 		return 1;
@@ -422,14 +445,34 @@ sub forward {
 		internal => 1
 	});
 
+	$self->_set_froutes($routes);
+
 	$self->exception({ code => 500, error => "Can't forward as no matching routes were found" }) unless scalar @$routes;
 
 	my @pass = ($routes->[0]->{class}, $self);
 	push(@pass, @{$routes->[0]->{captures}}) if scalar @{$routes->[0]->{captures}};
 	push(@pass, @_) if scalar @_;
 
-	# just invoke the first matching route
-	return $routes->[0]->{code}->(@pass);
+	# invoke the first matching route
+	my $ret = $routes->[0]->{code}->(@pass);
+
+	# are we passing to the next matching route?
+	# to prevent infinite loops, limit passing to no more than 100 times
+	while ($self->_pass_next && $self->current_froute < 100) {
+		$self->log->info("Passing request to the next matching route.");
+
+		# we need to pass to the next matching route.
+		# first, let's erase the pass flag from the context
+		# so we don't try to do this infinitely
+		$self->_set_pass_next(0);
+		# no let's invoke the route
+		$ret = $routes->[$self->current_froute]->{code}->(@pass);
+	}
+
+	$self->_clear_froutes;
+	$self->_set_current_froute(0);
+
+	return $ret;
 }
 
 =head2 loc( $msg, [ @args ] )
