@@ -588,14 +588,13 @@ sub _initial_debug_info {
 			$c =~ s!_root_!(root)!;
 			my $pre = $self->routes->FETCH($_);
 			foreach my $r (sort $pre->Keys) {
-				my ($regex) = ($r =~ m/^\(\?-xism:(.+)\)$/);
 				my $reg = $pre->FETCH($r);
 				foreach my $m (sort keys %$reg) {
 					my $returns = ref $reg->{$m}->{rules}->{returns} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{returns}}) : $reg->{$m}->{rules}->{returns};
 					my $accepts = ref $reg->{$m}->{rules}->{accepts} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{accepts}}) : $reg->{$m}->{rules}->{accepts};
 					my $is = ref $reg->{$m}->{rules}->{is} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{is}}) : $reg->{$m}->{rules}->{is};
 					
-					$t2->row($c, $regex, uc($m), $accepts, $returns, $is);
+					$t2->row($c, $r, uc($m), $accepts, $returns, $is);
 				}
 			}
 		}
