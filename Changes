@@ -1,6 +1,15 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	- Bugfix: response object now does not get text/html content
+	  type on initialization as it is not necessarily true
+	- Bugfix: when running a leyland app the initial summary table prints
+	  route regexes as-is since perl 5.14 changes the way regex variables
+	  are printed stringwise
+	- When an exception is thrown and app is running on the deployment
+	  environment, if client accepts html and exception was not defined
+	  an html template - leyland lets Plack's StackTrace middleware
+	  handle the exception and print a nice stack trace
 
 0.001006  2011-06-24 23:30:19 Asia/Jerusalem
 	- When forwarding internally (with $c->forward), requests to pass

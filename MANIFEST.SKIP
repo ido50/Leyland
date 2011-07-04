@@ -16,3 +16,5 @@
 ^\.build.*$
 ^.+\.cache$
 ^.+\.log$
+^MYMETA\.yml$
+^MYMETA\.json$
