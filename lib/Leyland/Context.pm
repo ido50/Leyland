@@ -565,7 +565,7 @@ The following methods are only to be used internally:
 
 =cut
 
-sub _build_res { shift->new_response(200, [ 'Content-Type' => 'text/html' ]) }
+sub _build_res { shift->new_response(200) }
 
 sub _build_mimes {
 	my $self = shift;
