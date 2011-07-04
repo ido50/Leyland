@@ -1,6 +1,8 @@
 Revision history for Leyland
 
 {{$NEXT}}
+
+0.001007  2011-07-04 22:50:33 Asia/Jerusalem
 	- Bugfix: response object now does not get text/html content
 	  type on initialization as it is not necessarily true
 	- Bugfix: when running a leyland app the initial summary table prints
