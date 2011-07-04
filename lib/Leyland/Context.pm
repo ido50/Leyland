@@ -543,6 +543,22 @@ The default C<finalize()> method provided by this class does not do anything.
 
 sub finalize { 1 } # meant to be overridden
 
+=head2 accepts( $mime )
+
+Returns a true value if the client accepts the provided MIME type.
+
+=cut
+
+sub accepts {
+	my ($self, $mime) = @_;
+
+	foreach (@{$self->wanted_mimes}) {
+		return 1 if $_->{mime} eq $mime;
+	}
+
+	return;
+}
+
 =head1 INTERNAL METHODS
 
 The following methods are only to be used internally:

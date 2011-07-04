@@ -490,11 +490,11 @@ sub _handle_exception {
 		return $c->_respond($exp->code);
 	}
 
-	# are we on the development environment? if so, and the exception
-	# has no mimes, we croak with a simple error message so that Plack
-	# displays a nice stack trace
+	# are we on the development environment? if so, and the client
+	# accepts HTML (and the exception has no HTML MIME), we croak
+	# with a simple error message so that Plack displays a nice stack trace
 	croak $self->name.' croaked with HTTP status code '.$exp->code.' and error message "'.$err.'"'
-		if $self->cwe eq 'development' && !$exp->has_mimes;
+		if $self->cwe eq 'development' && $c->accepts('text/html') && (!$exp->has_mimes || !$exp->has_mime('text/html'));
 
 	# do we have templates for any of the client's requested MIME types?
 	# if so, render the first one you find.
