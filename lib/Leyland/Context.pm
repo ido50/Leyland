@@ -608,6 +608,7 @@ sub _respond {
 
 	$self->res->status($status) if $status && $status =~ m/^\d+$/;
 	$self->res->headers($headers) if $headers && ref $headers eq 'HASH';
+	$self->res->header('X-Framework' => 'Leyland');
 	if ($content) {
 		my $mimetypes = MIME::Types->new;
 		my MIME::Type $mime = $mimetypes->type($self->res->content_type);
