@@ -221,14 +221,6 @@ An alias for the "app" attribute.
 
 sub leyland { shift->app }
 
-=head2 log()
-
-A shortcut for C<< $c->app->log >>.
-
-=cut
-
-sub log { shift->app->log }
-
 =head2 config()
 
 A shortcut for C<< $c->app->config >>.
