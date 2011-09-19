@@ -74,7 +74,7 @@ sub negotiate {
 	# --------------------------------------------------------------
 	# Leyland only supports UTF-8 character encodings, so let's check
 	# the client supports that. If not, let's return an error
-	$c->log->info('Negotiating character set.');
+	$c->log->debug('Negotiating character set.');
 	Leyland::Negotiator->_negotiate_charset($c)
 		|| $c->exception({ code => 400, error => "This server only supports the UTF-8 character set, unfortunately we are unable to fulfil your request." });
 
@@ -88,12 +88,12 @@ sub negotiate {
 	$routes = $class->_negotiate_path($c, { app_routes => $app_routes, path => $path });
 	$c->exception({ code => 404 }) unless scalar @$routes;
 
-	$c->log->info('Found '.scalar(@$routes).' routes matching '.$path);
+	$c->log->debug('Found '.scalar(@$routes).' routes matching '.$path);
 
 	# 3. REQUEST METHOD NEGOTIATION
 	# --------------------------------------------------------------
 	# weed out routes that do not match request method
-	$c->log->info('Negotiating request method.');
+	$c->log->debug('Negotiating request method.');
 	$routes = $class->_negotiate_method($c->method, $routes);
 	$c->exception({ code => 405 }) unless scalar @$routes;
 
@@ -101,7 +101,7 @@ sub negotiate {
 	# --------------------------------------------------------------
 	# weed out all routes that do not accept the media type that the
 	# client used for the request
-	$c->log->info('Negotiating media type received.');
+	$c->log->debug('Negotiating media type received.');
 	$routes = $class->_negotiate_receive_media($c, $routes);
 	$c->exception({ code => 415 }) unless scalar @$routes;
 
@@ -109,7 +109,7 @@ sub negotiate {
 	# --------------------------------------------------------------
 	# weed out all routes that do not return any media type
 	# the client accepts
-	$c->log->info('Negotiating media type returned.');
+	$c->log->debug('Negotiating media type returned.');
 	$routes = $class->_negotiate_return_media($c, $routes);
 	$c->exception({ code => 406 }) unless scalar @$routes;
 
@@ -276,7 +276,7 @@ sub _negotiate_receive_media {
 		$ct = $1;
 	}
 
-	$c->log->info("I have received $ct");
+	$c->log->debug("I have received $ct");
 
 	ROUTE: foreach (@$all_routes) {
 		# does this route accept all media types?
@@ -308,7 +308,7 @@ sub _negotiate_return_media {
 	foreach (@{$c->wanted_mimes}) {
 		push(@mimes, $_->{mime});
 	}
-	$c->log->info('Remote address wants '.join(', ', @mimes));
+	$c->log->debug('Remote address wants '.join(', ', @mimes));
 
 	# will hold all routes with acceptable return types
 	my $routes = [];

@@ -10,6 +10,7 @@ use Carp;
 use Data::Dumper;
 use JSON::Any;
 use Leyland::Exception;
+use Leyland::Logger;
 use MIME::Types;
 use Module::Load;
 use Text::SpanningTable;
@@ -197,6 +198,8 @@ has 'lang' => (is => 'ro', isa => 'Str', writer => 'set_lang', default => 'en');
 has 'stash' => (is => 'ro', isa => 'HashRef', default => sub { {} });
 
 has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user', clearer => 'clear_user');
+
+has 'log' => (is => 'ro', isa => 'Leyland::Logger', lazy_build => 1);
 
 has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new(utf8 => 1) }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
 
@@ -600,7 +603,7 @@ sub _respond {
 
 	$self->res->status($status) if $status && $status =~ m/^\d+$/;
 	$self->res->headers($headers) if $headers && ref $headers eq 'HASH';
-	$self->res->header('X-Framework' => 'Leyland');
+	$self->res->header('X-Framework' => 'Leyland v'.$Leyland::VERSION);
 	if ($content) {
 		my $mimetypes = MIME::Types->new;
 		my MIME::Type $mime = $mimetypes->type($self->res->content_type);
@@ -609,7 +612,7 @@ sub _respond {
 		$self->res->content_length(length($body));
 	}
 
-	$self->_log_response;
+	#$self->_log_response;
 
 	return $self->res->finalize;
 }
@@ -619,35 +622,27 @@ sub _log_request {
 
 	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
 
-	$self->stash->{_tft} = $t;
-
-	$self->log->info($t->hr('top'));
-	$self->log->info($t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'));
-	$self->log->info($t->dhr);
+	print STDOUT $t->hr('top'), "\n",
+		     $t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'), "\n",
+		     $t->dhr, "\n";
 	foreach (split(/\n/, $t->row($self->num, $self->address, $self->method, $self->path, $self->content_type))) {
-		$self->log->info($_);
+		print STDOUT $_, "\n";
 	}
-	$self->log->info($t->hr);
-
-	$self->log->set_exec(sub { $_[0]->stash->{_tft}->row([5, $_[1]]) }, $self);
+	print STDOUT $t->hr, "\n";
 }
 
 sub _log_response {
 	my $self = shift;
 
-	my $t = $self->stash->{_tft};
-	
-	$self->log->clear_exec();
-	$self->log->clear_args();
+	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
 
-	$self->log->info($t->hr);
+	print STDOUT $t->hr, "\n";
 	foreach (split(/\n/, $t->row($self->num, $self->res->status.' '.$Leyland::CODES->{$self->res->status}->[0], [3, $self->res->content_type]))) {
-		$self->log->info($_);
+		print STDOUT $_, "\n";
 	}
-	$self->log->info($t->dhr);
-	$self->log->info($t->row('Response #', 'Status', [3, 'Content-Type']));
-	$self->log->info($t->hr('bottom'));
-	$self->log->info(' ');
+	print STDOUT $t->dhr, "\n",
+		     $t->row('Response #', 'Status', [3, 'Content-Type']), "\n",
+		     $t->hr('bottom'), "\n\n";
 }
 
 sub _invoke_route {
@@ -748,6 +743,16 @@ sub _structure {
 	}
 }
 
+sub _build_log {
+	my $self = shift;
+
+	if ($self->env->{'psgix.logger'}) {
+		Leyland::Logger->new(logger => $self->env->{'psgix.logger'});
+	} else {
+		Leyland::Logger->new;
+	}
+}
+
 =head2 FOREIGNBUILDARGS( \%args )
 
 =cut
@@ -762,7 +767,7 @@ sub FOREIGNBUILDARGS {
 
 =cut
 
-sub BUILD { shift->_log_request }
+#sub BUILD { shift->_log_request }
 
 =head1 PLACK MODIFICATIONS
 

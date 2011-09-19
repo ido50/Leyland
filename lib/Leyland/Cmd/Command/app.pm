@@ -192,24 +192,6 @@ my $config = {
 	app => '[== $package_name =]',
 	views => ['Tenjin'],
 	locales => './i18n',
-	logger => {
-		class => 'LogHandler',
-		opts => {
-			outputs => [
-				file => {
-					filename => "[== lc($app_name) =].$ENV{PLACK_ENV}.log",
-					minlevel => 0,
-					maxlevel => 8,
-					utf8 => 1,
-				},
-				screen => {
-					log_to   => "STDERR",
-					minlevel => 0,
-					maxlevel => 8,
-				},
-			]
-		}
-	},
 	environments => {
 		development => {
 			# options in here will override top level options when running in the development environment

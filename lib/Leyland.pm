@@ -423,7 +423,7 @@ sub BUILD {
 					}
 				}
 			}
-		} else {
+		} elsif ($_->routes && $_->routes->Length) {
 			$routes->Push($prefix => $_->routes);
 		}
 	}
@@ -543,14 +543,14 @@ sub _initial_debug_info {
 	$t1->row('Avilable views: '.join(', ', @views));
 	
 	$t1->hr('bottom');
-
-	print STDOUT "Available routes:\n";
 	
 	my $t2 = Text::SpanningTable->new(16, 24, 13, 18, 18, 12);
 	$t2->exec(\&_autolog);
 	$t2->hr('top');
+	$t2->row([6, 'Available routes:']);
+	$t2->dhr;
 
-	if ($self->has_routes) {
+	if ($self->has_routes && $self->routes->Length) {
 		$t2->row('Prefix', 'Regex', 'Method', 'Accepts', 'Returns', 'Is');
 		$t2->dhr;
 
@@ -558,19 +558,21 @@ sub _initial_debug_info {
 			my $c = $_;
 			$c =~ s!_root_!(root)!;
 			my $pre = $self->routes->FETCH($_);
-			foreach my $r (sort $pre->Keys) {
-				my $reg = $pre->FETCH($r);
-				foreach my $m (sort keys %$reg) {
-					my $returns = ref $reg->{$m}->{rules}->{returns} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{returns}}) : $reg->{$m}->{rules}->{returns};
-					my $accepts = ref $reg->{$m}->{rules}->{accepts} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{accepts}}) : $reg->{$m}->{rules}->{accepts};
-					my $is = ref $reg->{$m}->{rules}->{is} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{is}}) : $reg->{$m}->{rules}->{is};
-					
-					$t2->row($c, $r, uc($m), $accepts, $returns, $is);
+			if ($pre) {
+				foreach my $r (sort $pre->Keys) {
+					my $reg = $pre->FETCH($r);
+					foreach my $m (sort keys %$reg) {
+						my $returns = ref $reg->{$m}->{rules}->{returns} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{returns}}) : $reg->{$m}->{rules}->{returns};
+						my $accepts = ref $reg->{$m}->{rules}->{accepts} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{accepts}}) : $reg->{$m}->{rules}->{accepts};
+						my $is = ref $reg->{$m}->{rules}->{is} eq 'ARRAY' ? join(', ', @{$reg->{$m}->{rules}->{is}}) : $reg->{$m}->{rules}->{is};
+						
+						$t2->row($c, $r, uc($m), $accepts, $returns, $is);
+					}
 				}
 			}
 		}
 	} else {
-		$t2->row([6, '-- No routes available ! --']);
+		$t2->row([6, '-- No routes available!']);
 	}
 
 	$t2->hr('bottom');

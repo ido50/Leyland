@@ -43,6 +43,8 @@ foreach (
 			if ($_[1]) {
 				$message->{data} = $_[1];
 			}
+
+			$self->logger->($message);
 		});
 	}
 }
