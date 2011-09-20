@@ -18,6 +18,16 @@ has 'logger' => (
 	}
 );
 
+has 'supports' => (
+	is => 'ro',
+	isa => 'HashRef',
+	default => sub {
+		{
+			identifier => 0,
+		}
+	}
+);
+
 my $meta = __PACKAGE__->meta;
 
 foreach (
@@ -47,6 +57,14 @@ foreach (
 			$self->logger->($message);
 		});
 	}
+}
+
+sub identifier {
+	my ($self, $key, $value) = @_;
+
+	return unless $self->supports->{identifier};
+
+	$self->logger->({ identifier => $key, value => $value });
 }
 
 =head1 NAME

@@ -428,9 +428,9 @@ sub forward {
 		$method = $1;
 		$path = $';
 
-		$self->log->info("Attempting to forward request to $path with a $method method.");
+		$self->log->debug("Attempting to forward request to $path with a $method method.");
 	} else {
-		$self->log->info("Attempting to forward request to $path with any method.");
+		$self->log->debug("Attempting to forward request to $path with any method.");
 	}
 
 	my $routes = Leyland::Negotiator->_negotiate_path($self, {
@@ -454,7 +454,7 @@ sub forward {
 	# are we passing to the next matching route?
 	# to prevent infinite loops, limit passing to no more than 100 times
 	while ($self->_pass_next && $self->current_froute < 100) {
-		$self->log->info("Passing request to the next matching route.");
+		$self->log->debug("Passing request to the next matching route.");
 
 		# we need to pass to the next matching route.
 		# first, let's erase the pass flag from the context
@@ -680,7 +680,7 @@ sub _serialize {
 	unless ($ct) {
 		$ct = $want.'; charset=UTF-8' if $want && $want =~ m/text|json|xml|html|atom/;
 		$ct ||= 'text/plain; charset=UTF-8';
-		$self->log->info($ct .' will be returned');
+		$self->log->debug($ct .' will be returned');
 		$self->res->content_type($ct);
 	}
 
@@ -746,11 +746,13 @@ sub _structure {
 sub _build_log {
 	my $self = shift;
 
-	if ($self->env->{'psgix.logger'}) {
-		Leyland::Logger->new(logger => $self->env->{'psgix.logger'});
-	} else {
-		Leyland::Logger->new;
-	}
+	my %opts;
+	$opts{logger} = $self->env->{'psgix.logger'}
+		if $self->env->{'psgix.logger'};
+	$opts{supports} = $self->env->{'leyland.logger_supports'}
+		if $self->env->{'leyland.logger_supports'};
+
+	Leyland::Logger->new(%opts);
 }
 
 =head2 FOREIGNBUILDARGS( \%args )

@@ -276,7 +276,7 @@ sub handle {
 	if ($c->method eq 'OPTIONS') {
 		# get all available methods by using Leyland::Negotiator
 		# and return a 204 No Content response
-		$c->log->info('Finding supported methods for requested path.');
+		$c->log->debug('Finding supported methods for requested path.');
 		return $c->_respond(204, { 'Allow' => join(', ', Leyland::Negotiator->find_options($c, $self->routes)) });
 	} else {
 		# negotiate for routes and invoke the first matching route (if any).
@@ -284,11 +284,11 @@ sub handle {
 		# if at any point an expception is raised, handle it.
 		return try {
 			# get routes
-			$c->log->info('Searching matching routes.');
+			$c->log->debug('Searching matching routes.');
 			$c->_set_routes(Leyland::Negotiator->negotiate($c, $self->routes));
 
 			# invoke first route
-			$c->log->info('Invoking first matching route.');
+			$c->log->debug('Invoking first matching route.');
 			my $ret = $c->_invoke_route;
 
 			# are we passing to the next matching route?
@@ -454,7 +454,7 @@ sub _handle_exception {
 
 	# log the error thrown
 	my $err = $exp->error || $Leyland::CODES->{$exp->code}->[0];
-	$c->log->debug('Exception thrown: '.$exp->code.", message: $err");
+	$c->log->info('Exception thrown: '.$exp->code.", message: $err");
 
 	# is this a redirecting exception?
 	if ($exp->code =~ m/^3\d\d$/ && $exp->has_location) {
