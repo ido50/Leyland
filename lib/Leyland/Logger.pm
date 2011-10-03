@@ -67,6 +67,10 @@ sub identifier {
 	$self->logger->({ identifier => $key, value => $value });
 }
 
+sub id {
+	shift->supports->{log_id};
+}
+
 =head1 NAME
 
 Leyland::Logger - Logging facilities for Leyland application
