@@ -749,8 +749,8 @@ sub _build_log {
 	my %opts;
 	$opts{logger} = $self->env->{'psgix.logger'}
 		if $self->env->{'psgix.logger'};
-	$opts{supports} = $self->env->{'leyland.logger_supports'}
-		if $self->env->{'leyland.logger_supports'};
+	$opts{id} = $self->env->{'shutton.log_id'}
+		if $self->env->{'shutton.log_id'};
 
 	Leyland::Logger->new(%opts);
 }
