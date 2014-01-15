@@ -2,12 +2,12 @@ package Leyland::Logger;
 
 # ABSTARCT: Logging facilities for Leyland applications
 
-use Moose;
-use namespace::autoclean;
+use Moo;
+use namespace::clean;
 
 has 'logger' => (
 	is => 'ro',
-	isa => 'CodeRef',
+	isa => sub { die "logger must be a code reference" unless ref $_[0] && ref $_[0] eq 'CODE' },
 	default => sub {
 		sub {
 			my $args = shift;
@@ -18,8 +18,7 @@ has 'logger' => (
 	}
 );
 
-my $meta = __PACKAGE__->meta;
-
+no strict 'refs';
 foreach (
 	['trace'],
 	['debug'],
@@ -32,21 +31,20 @@ foreach (
 	['emergency']
 ) {
 	my $level = $_->[0];
-	foreach my $method (@$_) {
-		$meta->add_method($method => sub {
-			my $self = shift;
 
-			my $message = {
-				level => $level,
-				message => $_[0],
-			};
-			if ($_[1]) {
-				$message->{data} = $_[1];
-			}
+	*{$level} = sub {
+		my $self = shift;
 
-			$self->logger->($message);
-		});
-	}
+		my $message = {
+			level => $level,
+			message => $_[0],
+		};
+		if ($_[1]) {
+			$message->{data} = $_[1];
+		}
+
+		$self->logger->($message);
+	};
 }
 
 =head1 NAME
@@ -101,7 +99,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
@@ -111,5 +109,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-$meta->make_immutable;
 1;

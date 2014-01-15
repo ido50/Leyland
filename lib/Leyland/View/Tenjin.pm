@@ -2,8 +2,8 @@ package Leyland::View::Tenjin;
 
 # ABSTRACT: Tenjin view class for Leyland
 
-use Moose;
-use namespace::autoclean;
+use Moo;
+use namespace::clean;
 use Tenjin 0.070001;
 
 =head1 NAME
@@ -38,7 +38,11 @@ The L<Tenjin> object used.
 
 with 'Leyland::View';
 
-has 'engine' => (is => 'ro', isa => 'Tenjin', builder => '_init_engine');
+has 'engine' => (
+	is => 'ro',
+	isa => sub { die "engine must be a Tenjin object" unless ref $_[0] && ref $_[0] eq 'Tenjin' },
+	builder => '_init_engine'
+);
 
 =head1 OBJECT METHODS
 
@@ -108,7 +112,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
@@ -118,4 +122,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;

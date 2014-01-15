@@ -2,8 +2,8 @@ package Leyland;
 
 # ABSTRACT: Plack-based framework for RESTful web applications
 
-use Moose;
-use namespace::autoclean;
+use Moo;
+use namespace::clean;
 use version 0.77;
 
 our $VERSION = "1.000000";
@@ -115,8 +115,8 @@ flexibility matters, and strict - where constistency and convention are appropri
 Leyland goes to great lengths to give you the ability to do things the
 way you want to, and more importantly - the way your end-users want to.
 Your applications listen to your users' preferences and automatically decide on a
-suitable course of action. Leyland is also L<Moose> based, making it easy
-to extend and tweak its behavior.
+suitable course of action. Leyland is also L<Moo> based, making it easy
+to extend and tweak its behavior (and making it L<Moose> compatible).
 
 =item * Doesn't have a pony - You don't really need a pony, do you?
 
@@ -198,21 +198,56 @@ changing C<PLACK_ENV> directly).
 
 =cut
 
-has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
+has 'config' => (
+	is => 'ro',
+	isa => sub { die "config must be a hash-ref" unless ref $_[0] && ref $_[0] eq 'HASH' },
+	default => sub { __PACKAGE__->_default_config }
+);
 
-has 'context_class' => (is => 'ro', isa => 'Str', default => 'Leyland::Context');
+has 'context_class' => (
+	is => 'ro',
+	isa => sub { die "context_class must be a scalar" if ref $_[0] },
+	default => 'Leyland::Context'
+);
 
-has 'name' => (is => 'ro', isa => 'Str', required => 1);
+has 'name' => (
+	is => 'ro',
+	isa => sub { die "name must be a scalar" if ref $_[0] },
+	required => 1
+);
 
-has 'localizer' => (is => 'ro', isa => 'Leyland::Localizer', predicate => 'has_localizer', writer => '_set_localizer');
+has 'localizer' => (
+	is => 'ro',
+	predicate => 'has_localizer',
+	writer => '_set_localizer'
+);
 
-has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
+has 'views' => (
+	is => 'ro',
+	isa => sub { die "views must be an array-ref" unless ref $_[0] && ref $_[0] eq 'ARRAY' },
+	predicate => 'has_views',
+	writer => '_set_views'
+);
 
-has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
+has 'routes' => (
+	is => 'ro',
+	isa => sub { die "routes must be a Tie::IxHash object" unless ref $_[0] && ref $_[0] eq 'Tie::IxHash' },
+	predicate => 'has_routes',
+	writer => '_set_routes'
+);
 
-has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_req_counter');
+has 'req_counter' => (
+	is => 'ro',
+	isa => sub { die "req_counter must be an integer" unless $_[0] =~ m/^\d+$/ },
+	default => 0,
+	writer => '_set_req_counter'
+);
 
-has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
+has 'cwe' => (
+	is => 'ro',
+	isa => sub { die "cwe must be a scalar" if ref $_[0] },
+	default => sub { $ENV{PLACK_ENV} }
+);
 
 =head1 CLASS METHODS
 
@@ -355,7 +390,7 @@ around BUILDARGS => sub {
 
 =head2 BUILD()
 
-Automatically called by L<Moose> after instance creation, this method
+Automatically called by L<Moo> after instance creation, this method
 loads the context class, application logger, localizer, controllers and
 views. It then find all routes in the controllers, runs the application's
 setup() method, and prints a nice info table to the log.
@@ -676,4 +711,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;

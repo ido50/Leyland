@@ -2,8 +2,8 @@ package Leyland::Exception;
 
 # ABSTRACT: Throwable class for Leyland application exceptions
 
-use Moose;
-use namespace::autoclean;
+use Moo;
+use namespace::clean;
 
 =head1 NAME
 
@@ -102,15 +102,35 @@ view (if exception has the "mimes" attribute). Defaults to true.
 
 with 'Throwable';
 
-has 'code' => (is => 'ro', isa => 'Int', required => 1);
+has 'code' => (
+	is => 'ro',
+	isa => sub { die "code must be an integer" unless $_[0] =~ m/^\d+$/ },
+	required => 1
+);
 
-has 'error' => (is => 'ro', isa => 'Str', predicate => 'has_error', writer => '_set_error');
+has 'error' => (
+	is => 'ro',
+	isa => sub { die "error must be a scalar" if ref $_[0] },
+	predicate => 'has_error',
+	writer => '_set_error'
+);
 
-has 'location' => (is => 'ro', isa => 'Str', predicate => 'has_location');
+has 'location' => (
+	is => 'ro',
+	isa => sub { die "location must be a scalar" if ref $_[0] },
+	predicate => 'has_location'
+);
 
-has 'mimes' => (is => 'ro', isa => 'HashRef', predicate => 'has_mimes');
+has 'mimes' => (
+	is => 'ro',
+	isa => sub { die "mimes must be a hash-ref" unless ref $_[0] && ref $_[0] eq 'HASH' },
+	predicate => 'has_mimes'
+);
 
-has 'use_layout' => (is => 'ro', isa => 'Bool', default => 1);
+has 'use_layout' => (
+	is => 'ro',
+	default => 1
+);
 
 =head1 OBJECT METHODS
 
@@ -248,7 +268,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
@@ -258,4 +278,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;

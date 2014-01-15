@@ -17,9 +17,9 @@ Leyland::Parser - Provides the sweet REST syntax for Leyland controller routes
 
 	package MyApp::Controller::Stuff;
 
-	use Moose;
+	use Moo;
 	use Leyland::Parser;
-	use namespace::autoclean;
+	use namespace::clean;
 
 	prefix { '/stuff' }
 
@@ -32,7 +32,7 @@ Leyland::Parser - Provides the sweet REST syntax for Leyland controller routes
 		# do stuff
 	}
 
-	__PACKAGE__->meta->make_immutable;
+	1;
 
 =head1 DESCRIPTION
 
@@ -92,7 +92,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

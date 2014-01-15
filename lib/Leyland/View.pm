@@ -2,8 +2,7 @@ package Leyland::View;
 
 # ABSTRACT: Leyland view base class
 
-use Moose::Role;
-use namespace::autoclean;
+use Moo::Role;
 
 =head1 NAME
 
@@ -16,8 +15,8 @@ Leyland::View - Leyland view base class
 
 	package Leyland::View::SomeEngine;
 
-	use Moose;
-	use namespace::autoclean;
+	use Moo;
+	use namespace::clean;
 	use SomeEngine;
 
 	with 'Leyland::View';
@@ -32,11 +31,11 @@ Leyland::View - Leyland view base class
 		return $self->engine->render($view, $context, $use_layout);
 	}
 
-	__PACKAGE__->meta->make_immutable;
+	1;
 
 =head1 DESCRIPTION
 
-This L<Moose role|Moose::Role> describes how Leyland view classes, mostly
+This L<Moo role|Moo::Role> describes how Leyland view classes, mostly
 used to render HTML responses (but can be used for pretty much anything),
 are to be built. A view class uses a template engine (such as L<Template::Toolkit> or
 <Tenjin>) to render responses.
@@ -105,7 +104,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
