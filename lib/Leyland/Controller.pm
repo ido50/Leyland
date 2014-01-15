@@ -3,7 +3,8 @@ package Leyland::Controller;
 # ABSTRACT: Leyland controller base class
 
 use Moo::Role;
-use MooX::ClassAttribute;
+
+our %INFO;
 
 =head1 NAME
 
@@ -32,15 +33,23 @@ A L<Tie::IxHash> object with all the controller's routes.
 
 =cut
 
-class_has 'prefix' => (
-	is => 'rw',
-	default => ''
-);
+sub prefix {
+	my $class = shift;
 
-class_has 'routes' => (
-	is => 'rw',
-	default => sub { Tie::IxHash->new }
-);
+	$class = ref $class
+		if ref $class;
+
+	return $INFO{$class} ? $INFO{$class}->{prefix} : '';
+}
+
+sub routes {
+	my $class = shift;
+
+	$class = ref $class
+		if ref $class;
+
+	return $INFO{$class} ? $INFO{$class}->{routes} : Tie::IxHash->new;
+}
 
 =head1 CLASS METHODS
 
@@ -86,7 +95,8 @@ sub add_route {
 		}
 	}
 
-	my $routes = $class->routes;
+	$INFO{$class} ||= { prefix => '', routes => Tie::IxHash->new };
+	my $routes = $INFO{$class}->{routes};
 
 	if ($routes->EXISTS($regex)) {
 		my $thing = $routes->FETCH($regex);
@@ -94,8 +104,6 @@ sub add_route {
 	} else {
 		$routes->Push($regex => { $method => { class => $class, code => $code, rules => $rules } });
 	}
-
-	$class->routes($routes);
 }
 
 =head2 set_prefix()
@@ -107,9 +115,8 @@ Sets the prefix for all routes in the controller.
 sub set_prefix {
 	my ($class, $code) = @_;
 
-	if (!ref $class && ref $code && ref $code eq 'CODE') {
-		$class->prefix($code->());
-	}
+	$INFO{$class} ||= { prefix => '', routes => Tie::IxHash->new };
+	$INFO{$class}->{prefix} = $code->();
 }
 
 =head1 METHODS MEANT TO BE OVERRIDDEN

@@ -171,9 +171,9 @@ parsing. Not to be used directly.
 
 has 'app' => (
 	is => 'ro',
-	isa => sub { die "app must be a Leyland object" unless ref $_[0] && ref $_[0] eq 'Leyland' },
+	isa => sub { die "app must be a Leyland object" unless ref $_[0] && $_[0]->isa('Leyland') },
 	required => 1,
-	handles => ['cwe']
+	handles => ['cwe', 'views', 'config']
 );
 
 has 'num' => (
@@ -184,7 +184,7 @@ has 'num' => (
 
 has 'res' => (
 	is => 'lazy',
-	isa => sub { die "res must be a Plack::Response object" unless ref $_[0] && ref $_[0] eq 'Plack::Response' }
+	isa => sub { die "res must be a Plack::Response object" unless ref $_[0] && $_[0]->isa('Plack::Response') }
 );
 
 has 'routes' => (
@@ -255,9 +255,8 @@ has 'user' => (
 );
 
 has 'log' => (
-	is => 'ro',
-	isa => sub { die "log must be a Leyland::Logger object" unless ref $_[0] && ref $_[0] eq 'Leyland::Logger' },
-	lazy_build => 1
+	is => 'lazy',
+	isa => sub { die "log must be a Leyland::Logger object" unless ref $_[0] && ref $_[0] eq 'Leyland::Logger' }
 );
 
 has 'json' => (
@@ -298,22 +297,6 @@ An alias for the "app" attribute.
 =cut
 
 sub leyland { shift->app }
-
-=head2 config()
-
-A shortcut for C<< $c->app->config >>.
-
-=cut
-
-sub config { shift->app->config }
-
-=head2 views()
-
-A shortcut for C<< $c->app->views >>.
-
-=cut
-
-sub views { shift->app->views }
 
 =head2 has_routes()
 

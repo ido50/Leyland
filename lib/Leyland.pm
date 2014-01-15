@@ -16,6 +16,7 @@ use Encode;
 use Leyland::Localizer;
 use Leyland::Negotiator;
 use Module::Load;
+use Scalar::Util qw/blessed/;
 use Text::SpanningTable;
 use Tie::IxHash;
 use Try::Tiny;
@@ -487,7 +488,7 @@ sub _handle_exception {
 	# have we caught a Leyland::Exception object? if not, turn it into
 	# a Leyland::Exception
 	$exp = Leyland::Exception->new(code => 500, error => ref $exp ? Dumper($exp) : $exp)
-		unless blessed $exp && $exp->isa('Leyland::Exception');
+		unless blessed($exp) && $exp->isa('Leyland::Exception');
 
 	# log the error thrown
 	my $err = $exp->error || $Leyland::CODES->{$exp->code}->[0];

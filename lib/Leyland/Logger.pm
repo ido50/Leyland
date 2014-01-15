@@ -46,6 +46,7 @@ foreach (
 		$self->logger->($message);
 	};
 }
+use strict 'refs';
 
 =head1 NAME
 
