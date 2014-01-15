@@ -18,12 +18,6 @@ has 'logger' => (
 	}
 );
 
-has 'id' => (
-	is => 'ro',
-	isa => 'Any',
-	predicate => 'has_id',
-);
-
 my $meta = __PACKAGE__->meta;
 
 foreach (

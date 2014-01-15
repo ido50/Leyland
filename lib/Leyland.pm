@@ -2,12 +2,13 @@ package Leyland;
 
 # ABSTRACT: Plack-based framework for RESTful web applications
 
-our $VERSION = "1.000000";
-$VERSION = eval $VERSION;
-
 use Moose;
 use namespace::autoclean;
 use version 0.77;
+
+our $VERSION = "1.000000";
+$VERSION = eval $VERSION;
+our $DISPLAY_VERSION = version->parse($VERSION)->normal;
 
 use Carp;
 use Data::Dumper;
@@ -538,7 +539,7 @@ sub _initial_debug_info {
 	$t1->exec(\&_autolog);
 
 	$t1->hr('top');
-	$t1->row($self->config->{app}.' (powered by Leyland '.version->parse($Leyland::VERSION)->normal.')');
+	$t1->row($self->config->{app}.' (powered by Leyland '.$DISPLAY_VERSION.')');
 	$t1->dhr;
 	$t1->row('Current working environment: '.$self->cwe);
 	$t1->row('Avilable views: '.join(', ', @views));

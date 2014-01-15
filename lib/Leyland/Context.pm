@@ -603,14 +603,14 @@ sub _respond {
 
 	$self->res->status($status) if $status && $status =~ m/^\d+$/;
 	$self->res->headers($headers) if $headers && ref $headers eq 'HASH';
-	$self->res->header('X-Framework' => 'Leyland v'.$Leyland::VERSION);
+	$self->res->header('X-Framework' => 'Leyland '.$Leyland::DISPLAY_VERSION);
 	if ($content) {
 		my $body = Encode::encode('UTF-8', $content);
 		$self->res->body($body);
 		$self->res->content_length(length($body));
 	}
 
-	#$self->_log_response;
+	$self->_log_response;
 
 	return $self->res->finalize;
 }
@@ -747,8 +747,6 @@ sub _build_log {
 	my %opts;
 	$opts{logger} = $self->env->{'psgix.logger'}
 		if $self->env->{'psgix.logger'};
-	$opts{id} = $self->env->{'shutton.log_id'}
-		if $self->env->{'shutton.log_id'};
 
 	Leyland::Logger->new(%opts);
 }
@@ -767,7 +765,7 @@ sub FOREIGNBUILDARGS {
 
 =cut
 
-#sub BUILD { shift->_log_request }
+sub BUILD { shift->_log_request }
 
 =head1 PLACK MODIFICATIONS
 
