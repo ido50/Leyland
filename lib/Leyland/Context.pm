@@ -8,10 +8,9 @@ use namespace::autoclean;
 
 use Carp;
 use Data::Dumper;
-use JSON::Any;
+use JSON;
 use Leyland::Exception;
 use Leyland::Logger;
-use MIME::Types;
 use Module::Load;
 use Text::SpanningTable;
 use Try::Tiny;
@@ -201,7 +200,7 @@ has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set
 
 has 'log' => (is => 'ro', isa => 'Leyland::Logger', lazy_build => 1);
 
-has 'json' => (is => 'ro', isa => 'Object', default => sub { JSON::Any->new(utf8 => 1) }); # 'isa' should be 'JSON::Any', but for some reason JSON::Any->new blesses an array-ref, so validation fails
+has 'json' => (is => 'ro', isa => 'JSON', default => sub { JSON->new->utf8(0)->convert_blessed });
 
 has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; });
 
@@ -296,7 +295,7 @@ sub data {
 	return $self->_data if $self->_has_data;
 
 	if ($self->content_type =~ m!^application/json! && !$dont_parse) {
-		my $data = try { $self->json->from_json($self->content) } catch { undef };
+		my $data = try { $self->json->decode($self->content) } catch { undef };
 		return unless $data;
 		$self->_set_data($data);
 		return $self->_data;
@@ -605,9 +604,7 @@ sub _respond {
 	$self->res->headers($headers) if $headers && ref $headers eq 'HASH';
 	$self->res->header('X-Framework' => 'Leyland v'.$Leyland::VERSION);
 	if ($content) {
-		my $mimetypes = MIME::Types->new;
-		my MIME::Type $mime = $mimetypes->type($self->res->content_type);
-		my $body = (($mime && $mime->isAscii) || $self->res->content_type =~ m!^text/!) ? Encode::encode('UTF-8', $content) : $content;
+		my $body = Encode::encode('UTF-8', $content);
 		$self->res->body($body);
 		$self->res->content_length(length($body));
 	}
@@ -734,12 +731,12 @@ sub _structure {
 	my ($self, $obj, $want) = @_;
 	
 	if ($want eq 'application/json') {
-		return $self->json->to_json($obj);
+		return $self->json->encode($obj);
 	} elsif ($want eq 'application/atom+xml' || $want eq 'application/xml') {
 		return $self->xml->write($obj);
 	} else {
 		# return json anyway (temporary)
-		return $self->json->to_json($obj);
+		return $self->json->encode($obj);
 	}
 }
 

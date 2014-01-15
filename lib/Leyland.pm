@@ -2,7 +2,7 @@ package Leyland;
 
 # ABSTRACT: Plack-based framework for RESTful web applications
 
-our $VERSION = "0.003";
+our $VERSION = "1.000000";
 $VERSION = eval $VERSION;
 
 use Moose;
