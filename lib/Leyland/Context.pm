@@ -281,26 +281,29 @@ sub params { shift->parameters->as_hashref_mixed }
 Returns the data of the request for POST and PUT requests. If the data
 is JSON or XML, this module will attempt to automatically convert it to a Perl
 data structure, which will be returned by this method (if conversion will
-fail, this method will return C<undef>). Otherwise, the data will be returned
+fail, this method will return an empty hash-ref). Otherwise, the data will be returned
 as is. You can force this method to return the data as is even if it's
 JSON or XML by passing a true value to this method.
+
+If the request had no content, an empty hash-ref will be returned. This is different
+than version 0.003 and down where it would have returned C<undef>.
 
 =cut
 
 sub data {
 	my ($self, $dont_parse) = @_;
 
-	return unless $self->content_type && $self->content;
+	return {} unless $self->content_type && $self->content;
 
 	return $self->_data if $self->_has_data;
 
 	if ($self->content_type =~ m!^application/json! && !$dont_parse) {
-		my $data = try { $self->json->decode($self->content) } catch { undef };
+		my $data = try { $self->json->decode($self->content) } catch { {} };
 		return unless $data;
 		$self->_set_data($data);
 		return $self->_data;
 	} elsif ($self->content_type =~ m!^application/(atom+)?xml! && !$dont_parse) {
-		my $data = try { $self->xml->parse($self->content) } catch { undef };
+		my $data = try { $self->xml->parse($self->content) } catch { {} };
 		return unless $data;
 		$self->_set_data($data);
 		return $self->_data;
