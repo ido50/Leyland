@@ -404,11 +404,12 @@ performed had the route been invoked directly) is returned and the route
 from which the C<forward> has been called continues. If you don't want
 it to continue, simple use C<< return $c->forward('/somewhere') >>.
 
-At times, you'd have two or more routes sharing the exact same path, but
-each having a different HTTP method. In that case, it is unknown which
-route will be forwarded to. To force Leyland to forward to a route of a
-specific method, prefix C<$path> with the method name and a colon,
-like so: C<< $c->forward('POST:/somehwere') >>.
+The path should include the HTTP method of the route to forward to, by
+prefixing C<$path> with the method name and a colon, like so: C<< $c->forward('POST:/somewhere') >>.
+If a method is not provided (i.e. C<< $c->forward('/somewhere') >>), C<Leyland>
+will assume a C<GET> method. Note that this differs from version C<0.003> and
+down, where it would forward to the first matching route, regardless of the method.
+This is a safety measure so you do not accidentally forward to C<DELETE> routes.
 
 Note that if no routes are found, a 500 Internal Server Error will be
 thrown, not a 404 Not Found error, as this really is an internal server
@@ -426,11 +427,11 @@ sub forward {
 	if ($path =~ m/^(GET|POST|PUT|DELETE|HEAD|OPTIONS):/) {
 		$method = $1;
 		$path = $';
-
-		$self->log->debug("Attempting to forward request to $path with a $method method.");
 	} else {
-		$self->log->debug("Attempting to forward request to $path with any method.");
+		$method = 'GET';
 	}
+
+	$self->log->debug("Attempting to forward request to $path with a $method method.");
 
 	my $routes = Leyland::Negotiator->_negotiate_path($self, {
 		app_routes => $self->app->routes,
