@@ -4,7 +4,7 @@ package Leyland::Parser;
 
 use strict;
 use warnings;
-use Exporter::Declare '-magic';
+use Exporter::Declare::Magic 0.107;
 
 =head1 NAME
 
