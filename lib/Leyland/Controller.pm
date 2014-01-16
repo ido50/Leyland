@@ -72,11 +72,11 @@ sub add_route {
 		}
 	}
 
-	$rules->{accepts} ||= ['text/html'];
-	$rules->{returns} ||= ['text/html'];
+	$rules->{accepts} ||= [];
+	$rules->{returns} ||= [$Leyland::INFO{default_mime}];
 	$rules->{is} ||= ['external'];
-	
-	# if this is a POST route, make sure it accepts application/x-www-form-urlencoded
+
+	# if this is a POST/PUT route, make sure it accepts application/x-www-form-urlencoded
 	my $xwfu;
 	foreach (@{$rules->{accepts}}) {
 		if ($_ eq 'application/x-www-form-urlencoded') {

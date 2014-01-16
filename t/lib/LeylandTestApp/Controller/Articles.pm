@@ -8,13 +8,13 @@ with 'Leyland::Controller';
 
 prefix { '/articles' }
 
-get '^/(\w+)$' returns 'application/json' {
+get '^/(\w+)$' {
 	my $id = shift;
 
 	return { get => $id };
 }
 
-del '^/(\w+)$' returns 'application/json' {
+del '^/(\w+)$' {
 	my $id = shift;
 
 	return { del => $id };

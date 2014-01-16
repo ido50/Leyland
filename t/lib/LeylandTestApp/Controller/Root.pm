@@ -12,8 +12,12 @@ get '^/$' returns 'text/plain' {
 	return "Index";
 }
 
-get '^/exception$' returns 'application/json' {
+get '^/exception$' {
 	$c->exception({ code => 400, error => 'This is a simple text exception' });
+}
+
+get '^/default_mime$' {
+	return { default_mime => $c->config->{default_mime} };
 }
 
 1;

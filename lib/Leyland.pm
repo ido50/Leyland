@@ -21,6 +21,8 @@ use Text::SpanningTable;
 use Tie::IxHash;
 use Try::Tiny;
 
+our %INFO;
+
 =head1 NAME
 
 Leyland - Plack-based framework for RESTful web applications
@@ -161,7 +163,7 @@ Leyland::Context.
 
 The package name of the application, for example C<MyApp> or C<My::App>.
 Automatically created from the app's configuration. If config doesn't
-define a name, 'Leyland' will be used.
+define a name, 'MyApp' will be used.
 
 =head2 log
 
@@ -368,6 +370,8 @@ around BUILDARGS => sub {
 	}
 
 	$opts{name} = $opts{config} ? $opts{config}->{app} : 'MyApp';
+
+	$INFO{default_mime} = $opts{config} && $opts{config}->{default_mime} ? $opts{config}->{default_mime} : 'text/html';
 
 	# create the object
 	return $class->$orig(%opts);
