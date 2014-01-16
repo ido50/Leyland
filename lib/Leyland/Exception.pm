@@ -184,18 +184,7 @@ is 404, the name will be "Not Found".
 =cut
 
 sub name {
-	$Leyland::CODES->{$_[0]->code}->[0] || 'Internal Server Error';
-}
-
-=head2 description()
-
-Returns a generic description of the exception's status code. Descriptions
-are taken from the Wikipedia article mentioned in L</"DESCRIPTION">.
-
-=cut
-
-sub description {
-	$Leyland::CODES->{$_[0]->code}->[1] || 'Generic HTTP exception';
+	$Leyland::CODES->{$_[0]->code} || 'Internal Server Error';
 }
 
 =head1 INTERNAL METHODS
@@ -212,9 +201,8 @@ sub hash {
 	my $self = shift;
 
 	return {
-		error => $self->code . ' ' . $self->name,
-		message => $self->error,
-		description => $self->description,
+		error => $self->code.' '.$self->name,
+		message => $self->error
 	};
 }
 
@@ -225,7 +213,8 @@ sub hash {
 sub BUILD {
 	my $self = shift;
 
-	$self->_set_error($self->code . ' ' . $self->name) unless $self->has_error;
+	$self->_set_error($self->code.' '.$self->name)
+		unless $self->has_error;
 }
 
 =head1 AUTHOR

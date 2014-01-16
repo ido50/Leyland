@@ -675,7 +675,7 @@ sub _log_response {
 	my $self = shift;
 
 	print STDOUT '-'x80, "\n",
-			 '| Response code: ', $self->res->status, ' ', $Leyland::CODES->{$self->res->status}->[0], "\n",
+			 '| Response code: ', $self->res->status, ' ', $Leyland::CODES->{$self->res->status}, "\n",
 			 '| Response type: ', $self->res->content_type, "\n",
 			 '='x80, "\n";
 }
