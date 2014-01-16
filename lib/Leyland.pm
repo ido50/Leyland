@@ -3,6 +3,7 @@ package Leyland;
 # ABSTRACT: Plack-based framework for RESTful web applications
 
 use Moo;
+use parent 'Plack::Component';
 use namespace::clean;
 use version 0.77;
 
@@ -271,7 +272,7 @@ overridden, this method does nothing.
 
 sub setup { 1 }
 
-=head2 handle( \%env )
+=head2 call( \%env )
 
 Receives a Plack environment hash-ref of an HTTP request, creates a new
 instance of the application's context class (most probably L<Leyland::Context>),
@@ -286,7 +287,7 @@ This method will probably be called from C<app.psgi>.
 
 =cut
 
-sub handle {
+sub call {
 	my ($self, $env) = @_;
 
 	# increment the request counter
