@@ -87,11 +87,6 @@ Holds the L<Plack> environment in which the application is running. This
 is the C<PLACK_ENV> environment variable. See the C<-E> or C<--env> switch
 in L<plackup> for more information. Defaults to 'development'.
 
-=head2 num
-
-The sequential number of the request (since the application has been
-initialized).
-
 =head2 res
 
 The L<Plack::Response> object used to respond to the client.
@@ -174,12 +169,6 @@ has 'app' => (
 	isa => sub { die "app must be a Leyland object" unless ref $_[0] && $_[0]->isa('Leyland') },
 	required => 1,
 	handles => ['cwe', 'views', 'config']
-);
-
-has 'num' => (
-	is => 'ro',
-	isa => sub { die "num must be an integer" unless $_[0] =~ m/^\d+$/ },
-	default => 0
 );
 
 has 'res' => (
@@ -677,29 +666,18 @@ sub _respond {
 sub _log_request {
 	my $self = shift;
 
-	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
-
-	print STDOUT $t->hr('top'), "\n",
-		     $t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'), "\n",
-		     $t->dhr, "\n";
-	foreach (split(/\n/, $t->row($self->num, $self->address, $self->method, $self->path, $self->content_type))) {
-		print STDOUT $_, "\n";
-	}
-	print STDOUT $t->hr, "\n";
+	print STDOUT "\n", '='x80, "\n",
+			 '| New request: ', $self->method, ' ', $self->path, ' from ', $self->address, "\n",
+			 '-'x80, "\n";
 }
 
 sub _log_response {
 	my $self = shift;
 
-	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
-
-	print STDOUT $t->hr, "\n";
-	foreach (split(/\n/, $t->row($self->num, $self->res->status.' '.$Leyland::CODES->{$self->res->status}->[0], [3, $self->res->content_type]))) {
-		print STDOUT $_, "\n";
-	}
-	print STDOUT $t->dhr, "\n",
-		     $t->row('Response #', 'Status', [3, 'Content-Type']), "\n",
-		     $t->hr('bottom'), "\n\n";
+	print STDOUT '-'x80, "\n",
+			 '| Response code: ', $self->res->status, ' ', $Leyland::CODES->{$self->res->status}->[0], "\n",
+			 '| Response type: ', $self->res->content_type, "\n",
+			 '='x80, "\n";
 }
 
 sub _invoke_route {

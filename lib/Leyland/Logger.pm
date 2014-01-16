@@ -14,7 +14,7 @@ has 'logger' => (
 
 			# should print to STDERR if level is appropriate
 			binmode STDOUT, ":encoding(utf8)";
-			print STDOUT '['.$args->{level}.'] '.$args->{message}, "\n";
+			print STDOUT '| ['.$args->{level}.'] '.$args->{message}, "\n";
 		}
 	}
 );

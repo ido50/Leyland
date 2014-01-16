@@ -31,4 +31,8 @@ is($res->content, '{"del":"some_id"}', 'DELETE article route ok');
 $res = $test->request(GET '/articles/some_id', 'Accept' => 'text/plain');
 is($res->code, 406, 'GET article when not accepting JSON returns 406');
 
+$res = $test->request(GET '/exception');
+is($res->code, 400, 'GET exception returns a proper exception code');
+is($res->content, 'This is a simple text exception', 'GET exception returns JSON for the exception text');
+
 done_testing();

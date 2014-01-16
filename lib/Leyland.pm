@@ -12,7 +12,6 @@ $VERSION = eval $VERSION;
 our $DISPLAY_VERSION = version->parse($VERSION)->normal;
 
 use Carp;
-use Data::Dumper;
 use Encode;
 use Leyland::Localizer;
 use Leyland::Negotiator;
@@ -186,11 +185,6 @@ configuration. If none defined, L<Tenjin> is used by default.
 A L<Tie::IxHash> object holding all routes defined in the application's
 controllers. Automatically created, not to be used directly by applications.
 
-=head2 req_counter
-
-An integer representing the number of requests handled by the application.
-Automatically created.
-
 =head2 cwe
 
 The plack environment in which the application is running. This is the
@@ -238,13 +232,6 @@ has 'routes' => (
 	writer => '_set_routes'
 );
 
-has 'req_counter' => (
-	is => 'ro',
-	isa => sub { die "req_counter must be an integer" unless $_[0] =~ m/^\d+$/ },
-	default => 0,
-	writer => '_set_req_counter'
-);
-
 has 'cwe' => (
 	is => 'ro',
 	isa => sub { die "cwe must be a scalar" if ref $_[0] },
@@ -290,14 +277,10 @@ This method will probably be called from C<app.psgi>.
 sub call {
 	my ($self, $env) = @_;
 
-	# increment the request counter
-	$self->_set_req_counter($self->req_counter + 1);
-
 	# create the context object
 	my $c = $self->context_class->new(
 		app => $self,
-		env => $env,
-		num => $self->req_counter
+		env => $env
 	);
 
 	# does the request path have an "unnecessary" trailing slash?
@@ -535,7 +518,7 @@ sub _handle_exception {
 	return $c->_respond(
 		$exp->code,
 		{ 'Content-Type' => 'text/plain; charset=UTF-8' },
-		Dumper($exp->error)
+		$exp->error
 	);
 }
 
