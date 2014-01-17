@@ -12,7 +12,7 @@ use Plack::Test;
 use LeylandTestApp;
 use Test::More;
 
-my $app = LeylandTestApp->new(config => { app => 'LeylandTestApp', default_mime => 'application/json' })->to_app;
+my $app = LeylandTestApp->new->to_app;
 my $test = Plack::Test->create($app);
 
 # test GET on the index route, which should return a plain text

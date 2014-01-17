@@ -150,8 +150,7 @@ Mini 1000. I don't know why.
 
 =head2 config
 
-A hash-ref of configuration options for the application. If not provided,
-a default configuration will be used.
+A hash-ref of configuration options for the application.
 
 =head2 context_class
 
@@ -196,22 +195,23 @@ changing C<PLACK_ENV> directly).
 
 =cut
 
+has 'name' => (
+	is => 'ro',
+	isa => sub { die "name must be a scalar" if ref $_[0] },
+	writer => '_set_name'
+);
+
 has 'config' => (
 	is => 'ro',
 	isa => sub { die "config must be a hash-ref" unless ref $_[0] && ref $_[0] eq 'HASH' },
-	default => sub { __PACKAGE__->_default_config }
+	default => sub { {} }
 );
 
 has 'context_class' => (
 	is => 'ro',
 	isa => sub { die "context_class must be a scalar" if ref $_[0] },
+	writer => '_set_context_class',
 	default => 'Leyland::Context'
-);
-
-has 'name' => (
-	is => 'ro',
-	isa => sub { die "name must be a scalar" if ref $_[0] },
-	required => 1
 );
 
 has 'localizer' => (
@@ -256,10 +256,6 @@ Meant to be overridden by applications, this is automatically called
 right after the application has been initialized, so it is useful for
 one-time initializations your application might need to perform. If not
 overridden, this method does nothing.
-
-=cut
-
-sub setup { 1 }
 
 =head2 call( \%env )
 
@@ -352,31 +348,6 @@ controllers.
 
 The following methods are only to be used internally.
 
-=cut
-
-around BUILDARGS => sub {
-	my ($orig, $class, %opts) = @_;
-
-	# parse the config variable, take out environment-specific parameters
-	if ($opts{config}) {
-		my $envs = delete $opts{config}->{environments};
-		if ($envs->{$ENV{PLACK_ENV}}) {
-			foreach (keys %{$envs->{$ENV{PLACK_ENV}}}) {
-				$opts{config}->{$_} = delete $envs->{$ENV{PLACK_ENV}}->{$_};
-			}
-		}
-		delete $opts{config}->{environments};
-		$opts{config}->{app} ||= 'MyApp';
-	}
-
-	$opts{name} = $opts{config} ? $opts{config}->{app} : 'MyApp';
-
-	$INFO{default_mime} = $opts{config} && $opts{config}->{default_mime} ? $opts{config}->{default_mime} : 'text/html';
-
-	# create the object
-	return $class->$orig(%opts);
-};
-
 =head2 BUILD()
 
 Automatically called by L<Moo> after instance creation, this method
@@ -389,6 +360,16 @@ setup() method, and prints a nice info table to the log.
 sub BUILD {
 	my $self = shift;
 
+	# invoke setup method and get application settings
+	my $settings = $self->can('setup') ? $self->setup : {};
+
+	$self->_set_name(blessed $self);
+
+	$INFO{default_mime} = $settings->{default_mime} || 'text/html';
+
+	$self->_set_context_class($settings->{context_class})
+		if $settings->{context_class};
+
 	# load the context class
 	load $self->context_class;
 
@@ -400,12 +381,12 @@ sub BUILD {
 	# with it
 	load Module::Pluggable;
 	Module::Pluggable->import(
-		search_path => [$self->config->{app}.'::View'],
+		search_path => [$self->name.'::View'],
 		sub_name => '_views',
 		instantiate => 'new'
 	);
 	Module::Pluggable->import(
-		search_path => [$self->config->{app}.'::Controller'],
+		search_path => [$self->name.'::Controller'],
 		sub_name => 'controllers',
 		require => 1
 	);
@@ -413,7 +394,7 @@ sub BUILD {
 	# init views, if any, start with view modules in the app
 	my @views = $self->_views;
 	# now load views defined in the config file
-	VIEW: foreach (@{$self->config->{views} || []}) {
+	VIEW: foreach (@{$settings->{views} || ['Tenjin']}) {
 		# have we already loaded this view in the first step?
 		foreach my $v ($self->_views) {
 			next VIEW if blessed($v) eq $_;
@@ -454,9 +435,6 @@ sub BUILD {
 		}
 	}
 	$self->_set_routes($routes);
-
-	# invoke setup method
-	$self->setup();
 
 	# print debug information
 	$self->_initial_debug_info;
@@ -529,14 +507,6 @@ sub _handle_exception {
 	);
 }
 
-=head2 _default_config()
-
-Returns a default configuration hash-ref.
-
-=cut
-
-sub _default_config { { app => 'Leyland', views => ['Tenjin'] } }
-
 =head2 _autolog( $msg )
 
 Used by C<Text::SpanningTable> when printing the application's info
@@ -566,7 +536,7 @@ sub _initial_debug_info {
 	$t1->exec(\&_autolog);
 
 	$t1->hr('top');
-	$t1->row($self->config->{app}.' (powered by Leyland '.$DISPLAY_VERSION.')');
+	$t1->row($self->name.' (powered by Leyland '.$DISPLAY_VERSION.')');
 	$t1->dhr;
 	$t1->row('Current working environment: '.$self->cwe);
 	$t1->row('Avilable views: '.join(', ', @views));
