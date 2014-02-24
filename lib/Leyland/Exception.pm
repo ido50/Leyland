@@ -30,7 +30,10 @@ Leyland::Exception - Throwable class for Leyland application exceptions
 
 	# or you can create an error that redirects (don't do this unless
 	# you have a good reason to, you'd most likely want to use
-	# $c->res->redirect to redirect requests).
+	# $c->res->redirect to redirect requests). The only place where
+	# this should be acceptable is inside controller methods such
+	# as auto() and pre_route(), where redirecting responses is not
+	# yet possible.
 	$c->exception({
 		code => 303,
 		error => "The resource you're requesting is available at a different location",
@@ -39,7 +42,7 @@ Leyland::Exception - Throwable class for Leyland application exceptions
 
 =head1 DESCRIPTION
 
-This module provides Leyland applications the ability to throw HTTP exceptions
+This module provides L<Leyland applications the ability to throw HTTP exceptions
 in a consistent and standard way. Leyland applications are meant to throw
 standard HTTP errors, like "404 Not Found", "400 Bad Request", "500 Internal
 Server Error", etc. Check out L<List of HTTP status codes at Wikipedia|https://secure.wikimedia.org/wikipedia/en/w/index.php?title=List_of_HTTP_status_codes&oldid=424349307>
@@ -187,13 +190,12 @@ sub name {
 	$Leyland::CODES->{$_[0]->code} || 'Internal Server Error';
 }
 
-=head1 INTERNAL METHODS
-
-The following methods are only to be used internally.
-
 =head2 hash()
 
-Returns a hash-ref representation of the error.
+Returns a hash-ref representation of the error. This hash-ref will have
+the keys C<error> (which will hold the exception code and the exception
+name, separated by a space, e.g. C<404 Not Found>), and C<message>, which
+will hold the error message.
 
 =cut
 
@@ -205,6 +207,10 @@ sub hash {
 		message => $self->error
 	};
 }
+
+=head1 INTERNAL METHODS
+
+The following methods are only to be used internally.
 
 =head2 BUILD()
 

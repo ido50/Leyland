@@ -47,38 +47,38 @@ will look something like this:
 	use warnings;
 	use MyApp;
 
-	my $config = { app => 'MyApp' };
-
-	my $a = MyApp->new(config => $config);
-
-	my $app = sub {
-		$a->handle(shift);
-	};
+	my $app = MyApp->new->to_app;
 
 The C<lib/MyApp.pm> file is a simple class the extends L<Leyland>. A minimal
 example would be:
 
 	package MyApp;
 
-	use Moose;
-	use namespace::autoclean;
+	use Moo;
+	use namespace::clean;
 
 	extends 'Leyland';
 
-	sub setup {
-		my $self = shift;
-		
-		# perform some initializations
+	1;
+
+If you need to perform some initializations upon loading of your application,
+you can use Moo/Moose's C<BUILD()> method:
+
+	...
+
+	extends 'Leyland';
+
+	sub BUILD {
+		# load some stuff
+		# do some stuff
+		# whatever
 	}
 
-	__PACKAGE__->meta->make_immutable;
+	1;
 
-The C<setup()> method is called immediately after the class is loaded and
-a new instance of it is created. It is useful for performing some necessary
-initializations and whatever you need to do just once to get your app working.
-You might initiate a database connection here, clear some files left over
-by your application in previous runs (if it generates any), whatever you
-find appropriate.
+In the past, this was done using the C<setup()> method, but since v1.0.0 the
+C<setup()> method is used for configuring Leyland options (described later
+in L</"CONFIGURING LEYLAND APPLICATIONS">.
 
 Next in line we find C<lib/MyApp/Context.pm>. Most applications will not
 have this file. This file (which can actually be named differently and
@@ -94,9 +94,9 @@ A minimal controller will look something like this:
 
 	package MyApp::Controller::Root;
 
-	use Moose;
+	use Moo;
 	use Leyland::Parser;
-	use namespace::autoclean;
+	use namespace::clean;
 
 	with 'Leyland::Controller';
 
@@ -106,12 +106,12 @@ A minimal controller will look something like this:
 		$c->template('index.html');
 	}
 	
-	__PACKAGE__->meta->make_immutable;
+	1;
 
 More information about controllers in L<Leyland::Manual::Controllers>.
 
 The C<lib/MyApp/Model/> directory is really just a suggestion. Leyland, as
-opposed to Catalyst, does not concern itself with models. Do what you like,
+opposed to L<Catalyst>, does not concern itself with models. Do what you like,
 how you like. If you want to create model classes in this directory, go
 ahead. If you want to do that somewhere/somehow else, knock yourself out.
 Leyland will not attempt to load model classes for you. More information
@@ -133,7 +133,8 @@ for views/templates. Since Leyland is designed for web applications, pretty
 much every Leyland application will have a public directory, though it
 doesn't have to be called "public", nor does it need to contain the directories
 in the above example ("css", "js" and "images"). Static files are not
-handled by Leyland directly. Instead, Leyland either relies on L<Plack::Middleware::Static>
+handled by Leyland directly. Instead, Leyland either relies on an appropriate
+Plack middleware/application (such as L<Plack::Middleware::Static> or L<Plack::App::MCCS>)
 to serve those files, or on a front-line web server such as Apache, nginx,
 lighttpd or cherokee. More information about static files in L<Leyland::Manual::StaticFiles>.
 
@@ -178,32 +179,38 @@ L<Leyland::Manual::Localization> for more information.
 =head1 CREATING LEYLAND APPLICATIONS
 
 To start a new Leyland application, one needs to create the above application
-structure. You can do it by hand, or you can use the provided script,
-L<leyland>, which will create this structure for you automatically:
-
-	# from the command line
-	leyland app --author "Some Guy" --email "some_guy@email.com" MyApp
-
-Replace C<MyApp> with the name of your application. That would be the
-package name (i.e. with "::", like "My::New::App"), not the distribution name
-(i.e. with "-", like "My-New-App"). You don't have to provide the
-C<--author> and C<--email> options, these are just used in the POD documentation
-of your classes, but keep in mind that if you don't, some useless default
-values will be used.
+structure (only the required parts, of course). In the past, a command line
+utility for automatically generating this structure was provided. Since v1.0.0,
+it is no longer available, so you should create this structure manually. Sorry.
 
 =head1 CONFIGURING LEYLAND APPLICATIONS
 
-While most other application frameworks like L<Catalyst> and L<Dancer>
-take configuration from configuration files, for Leyland I have currently
-decided to create a configuration directly inside the C<app.psgi> file.
-In the future, configuration files may be supported.
+A Leyland application takes two "forms" of configurations. The first are Leyland-specific
+configuration options, such as which view classes to load. The second is application-specific,
+something you as an application writer need.
 
-If you take a look at the example of the C<app.psgi> file above, you will
-notice the C<$config> variable. This is the configuration hash-ref of your
-application. At its minimum, it should contain the name of your application
-(under the 'app' key), otherwise 'Leyland' will be used.
+=head2 LEYLAND OPTIONS
 
-Other configuration options are:
+The first type of options should be provided to the application from its
+top class, using the C<setup()> method, like so:
+
+	package MyApp;
+
+	use Moo;
+	use namespace::clean;
+
+	extends 'Leyland';
+
+	sub setup {
+		return {
+			views => ['Tenjin'],
+			locales => './i18n'
+		};
+	}
+
+	1;
+
+The following configuration options are supported:
 
 =over
 
@@ -218,79 +225,35 @@ if you have any there (you probably don't).
 your application's L<Locale::Wolowitz> localization files. If you're not
 gonna localize, you don't need this.
 
-=item * "logger": takes a hash-ref with options for the logger class to
-use for logging. Read L<Leyland::Manual::Logging> for more information.
-If not provided, your application will log to STDERR.
-
-=item * "environments": takes a hash-ref with configuration options which
-are only relevant to the Plack environment (the C<PLACK_ENV> environment
-variable) on which the application is running. When your app is initialized,
-if configuration options are available for the selected environment,
-they will also be used, and will even take precedence over
-the basic configuration options. For example, you can define a "logger"
-option in the top level of the C<$config> variable that logs to the screen, and in "environments", under
-"deployment" perhaps, define another "logger" option that logs both to the
-screen and also the file. When your app is running on the "deployment"
-environment, the latter "logger" option will take effect.
+=item * "default_mime": takes a MIME type to use by default as the return MIME
+when defining routes. When a route does not define a return MIME, Leyland "guesses"
+C<text/html>. This is useful if most/all of your routes are of a different MIME
+type, so you don't have to repeat it on every route declaration.
 
 =back
 
-Anything else you provide in the C<$config> variable (including under the
-working environment) will also be available for usage by your application.
-A rather complete example for the C<$config> variable will be:
+=head2 APPLICATION CONFIGURATIONS
 
-	my $config = {
-		app => 'MyApp',
-		views => ['Tenjin'],
-		locales => './i18n',
-		default_lang => 'en',
-		environments => {
-			development => {
-				database_host => 'mongodb://localhost:27017',
-				logger => {
-					class => 'LogHandler',
-					opts => {
-						outputs => [
-							file => {
-								filename => "myapp.$ENV{PLACK_ENV}.log",
-								minlevel => 0,
-								maxlevel => 8,
-								utf8 => 1,
-							},
-							screen => {
-								log_to   => "STDERR",
-								minlevel => 0,
-								maxlevel => 8,
-							},
-						]
-					}
-				},
-			},
-			deployment => {
-				database_host => 'mongodb://localhost:27017,mongodb://localhost:27018',
-				logger => {
-					class => 'LogHandler',
-					opts => {
-						outputs => [
-							file => {
-								filename => "myapp.$ENV{PLACK_ENV}.log",
-								minlevel => 0,
-								maxlevel => 8,
-								utf8 => 1,
-							},
-						]
-					}
-				},
-			},
-		}
-	};
+Any configurations for your application can be provided to it from the PSGI
+file, like so:
 
-As you can see, every environment has a different "logger" configuration.
-Plus, every environment has its own "database_host" value, which is
-not Leyland-specific, but supposedly used by C<MyApp>. The same goes for
-the "default_lang" option, which is maybe used by the application developer
-to define the default language in which to respond to requests that do not
-define a language to use.
+	#!/usr/bin/perl -w
+
+	use lib './lib';
+	use strict;
+	use warnings;
+	use MyApp;
+
+	my $app = MyApp->new(config => {
+		db_host => 'localhost',
+		db_name => 'mydb',
+		db_user => 'myuser',
+		db_pass => 'mypass'
+	})->to_app;
+
+Anything that you provide to the C<config> attribute will be available on
+both the application object and the context object (which you will learn more
+about in L<Leyland::Manual::Controllers>) for your usage.
 
 =head1 RUNNING LEYLAND APPLICATIONS
 
@@ -347,7 +310,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

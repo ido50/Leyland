@@ -37,58 +37,42 @@ Leyland - RESTful web application framework based on Plack
 	use warnings;
 	use MyApp;
 
-	my $config = {
-		app => 'MyApp',
-		views => ['Tenjin'],
-		locales => './i18n',
-	};
-
-	my $app = MyApp->new(config => $config)->to_app;
+	my $app = MyApp->new->to_app;
 
 =head1 DESCRIPTION
 
-Leyland is a L<Plack>-based application framework for building truely
-RESTful, MVC-style web applications.
+	B<STOP! BACKWORDS COMPATIBILITY BREAKING CHANGES>
 
-"Another application framework?" you ask? Well yes! You see, after several
-years of L<Catalyst> development, I grew tired of Catalyst's bloat, and
-the fact that it made it very hard (pretty much impossible if you ask me)
-to create truely RESTful applications. I then moved for a short while to
-L<Dancer>, which had a nice syntax for defining routes and had at least some REST properties,
-but I quickly found it didn't fit my needs as well, and that it also made
-it very difficult to write truely RESTful applications. I also really missed
-Catalyst's "context object" and some of its other features, and simply
-couldn't get used to Dancer's whole functional syntax you're supposed to
-use inside your routes. While there were quite a few other options on CPAN,
-I didn't like any of them, plus pretty much none of them were native Plack
-frameworks, which for me is a bit of a minus (can't blame them though as
-most of them predate Plack), so I decided to create my own framework,
-based on Plack and designed to my liking. This is the mess that I've created.
-You will find that it mostly resembles Catalyst, while providing a syntax
-mostly similar to Dancer, but with a lot of crazy ideas of its own.
+	Leyland v1.0.0 brings major changes, some of them breaking backwords
+	compatibility (just a little bit). Read the L<Leyland::Manual::Upgrading|upgrading manual>
+	for more information.
+
+Leyland is a L<Plack>-based application framework for building truely
+RESTful, MVC-style web applications. It is feature rich and highly
+extensible.
 
 =head2 FEATURES
 
 =over
 
-=item * Build truely RESTful web applications - Leyland was designed from
+=item * B<Build truely RESTful web applications:> Leyland was designed from
 the ground up according to the Representational State Transfer style of
 software architecture. Leyland applications perform real HTTP negotiations,
 (can) provide different representations of the same resource easily, respond
 with proper HTTP status codes, throw real HTTP exceptions, etc.
 
-=item * Automatic data (de)serialization - Leyland does by itself the boring task
-of serializing resources to representations in the format your client
-wants to receive, like JSON and XML. It will also deserialize JSON/XML
-requests to Perl data-structures automatically.
+=item * B<Automatic data (de)serialization> - Leyland automatically
+serializes resources to representations in the format your client
+wants to receive, like JSON and XML. It will also automatically deserialize
+JSON/XML requests coming from the client to Perl data-structures.
 
-=item * Pure UTF-8 - Leyland applications are pure UTF-8. Anything your
+=item * P<Pure UTF-8> - Leyland applications are pure UTF-8. Anything your
 application receives is automatically UTF-8 decoded, and anything your
 application sends is automatically UTF-8 encoded. Leyland apps will not
 accept, nor provide, content in a different character set. If you want to
 use different/multiple encodings, then Leyland is not for you.
 
-=item * Localize for the client, not the server - Pretty much every other
+=item * B<Localize for the client, not the server> - Pretty much every other
 application framework only concerns itself with localizing the application
 to the locale of the machine on which it is running. I find that this is
 rarely useful nor interesting to the application developer. Leyland localizes for
@@ -97,39 +81,28 @@ the client, not the server. If the client wants to view your application
 Hebrew, then you can easily provide him with Hebrew representations.
 Leyland uses L<Locale::Wolowitz> for this purpose.
 
-=item * Easy deployment and middleware support via L<Plack> - Leyland doesn't
+=item * B<< Easy deployment and middleware support via L<Plack> >> - Leyland doesn't
 support Plack, it is dependant on it. Leyland's entire session support,
 for example, depends on Plack's L<Session|Plack::Middleware::Session>
 middleware. Use the full power of Plack in your Leyland application.
 
-=item * Less code, better programs - One thing I really hated about Catalyst
-was that I had to create stupid pointless classes that don't do anything
-but wrap a base class, just so I can have a new view class or something.
-While not as lightweight as Dancer, Leyland does a lot of the boring work
-for you, so you can concentrate more on your application.
+=item * B<Lightweight> - Leyland is much smaller than L<Catalyst> or other
+major frameworks, while still providing lots of features. While it is not
+a "micro-framework", it is pretty small. If you're looking for an extremely
+lightweight solution, my other framework - L<McBain> - might fit your need.
 
-=item * Flexible, extensible, unbreakable - Well, it's not unbreakable,
-but Leyland was designed to be as flexible and as extensible as possible - where
-flexibility matters, and strict - where constistency and convention are appropriate.
-Leyland goes to great lengths to give you the ability to do things the
-way you want to, and more importantly - the way your end-users want to.
-Your applications listen to your users' preferences and automatically decide on a
-suitable course of action. Leyland is also L<Moo> based, making it easy
-to extend and tweak its behavior (and making it L<Moose> compatible).
+=item * B<Flexible, extensible> - Leyland was designed to be as flexible and
+as extensible as possible - where flexibility matters, and strict - where
+constistency and convention are appropriate. Leyland goes to great lengths
+to give you the ability to do things the way you want to, and more
+importantly - the way your end-users want to. Your applications listen to
+your users' preferences and automatically decide on a suitable course of action.
+Leyland is also L<Moo> based, making it easy to extend and tweak its behavior
+(and making it L<Moose> compatible).
 
-=item * Doesn't have a pony - You don't really need a pony, do you?
+=item * B<Doesn't have a pony> - You don't really need a pony, do you?
 
 =back
-
-=head2 STATUS
-
-Development of Leyland began August 2010. I have been using it extensively
-for several projects, some of them already in production. Therefore, the
-API has somewhat stabilized and I do not consider it in alpha status.
-That said, Leyland still is immature, and I cannot guarantee that API
-changes won't be made, nor that it is bug free or even secure enough. If
-you're thinking of using Leyland for a production project, please test it
-thoroughly beforehand.
 
 =head2 MANUAL / TUTORIAL / GUIDE / GIBBERISH
 
@@ -137,35 +110,39 @@ To learn about using Leyland, please refer to the L<Leyland::Manual>. The
 documentation of this distribution's classes is for reference only, the
 manual is where you're most likely to find your answers. Or not.
 
+=head2 UPGRADING FROM VERSION 0.1.7 OR SMALLER
+
+Major changes have been made in Leyland version 1.0.0. While most should be
+backwords compatible, some are not. Please take a look at the L<Leyland::Manual::Upgrading|upgrading manual>
+for a complete list of changes and a simple guide for upgrading existing applications.
+
 =head2 WHAT'S WITH THE NAME?
 
 Leyland is named after Mr. Bean's clunker of a car - the British Leyland
 Mini 1000. I don't know why.
 
+=head1 EXTENDS
+
+L<Plack::Component>
+
 =head1 ATTRIBUTES
+
+=head2 name
+
+The package name of the application, for example C<MyApp> or C<My::App>.
+Automatically created.
 
 =head2 config
 
-A hash-ref of configuration options for the application.
+A hash-ref of configuration options supplied to the app by the PSGI file.
+These options are purely for the writer of the application and have nothing
+to do with Leyland itself.
 
 =head2 context_class
 
 The name of the class to be used as the context class for every request.
 Defaults to L<Leyland::Context>. If provided, the class must extend
 Leyland::Context.
-
-=head2 name
-
-The package name of the application, for example C<MyApp> or C<My::App>.
-Automatically created from the app's configuration. If config doesn't
-define a name, 'MyApp' will be used.
-
-=head2 log
-
-A logger object that C<does> L<Leyland::Logger>, providing the application
-with logging capabilities. Automatically built from the app's config, unless
-config doesn't define a logger, in which case L<Leyland::Logger::STDERR>
-will be used.
 
 =head2 localizer
 
@@ -241,30 +218,41 @@ has 'cwe' => (
 =head2 new( [ %attrs ] )
 
 Creates a new instance of this class. None of the attributes are required
-(in fact, you shouldn't pass most of them), but you will mostly pass
-the C<config> attribute, and possibly the C<context_class> attribute.
+(in fact, you shouldn't pass most of them), though you can pass the
+C<config> and C<context_class> attributes if you need.
 
 =head1 OBJECT METHODS
 
 =head2 setup()
 
-Meant to be overridden by applications, this is automatically called
-right after the application has been initialized, so it is useful for
-one-time initializations your application might need to perform. If not
-overridden, this method does nothing.
+This method is not available by default, but is expected to be provided by
+application classes (though it is not required). If present, it will be
+called upon creation of the application object. The method is expected to
+provide a hash-ref of Leyland-specific options. The following options are
+supported:
+
+=over
+
+=item * views
+
+A list of view classes to load.
+
+=item * locales
+
+The absolute path to the directory in which localization files (in L<Locale::Wolowitz>'s format)
+reside (if localization is used).
+
+=back
 
 =head2 call( \%env )
 
-Receives a Plack environment hash-ref of an HTTP request, creates a new
-instance of the application's context class (most probably L<Leyland::Context>),
-performs HTTP negotiations and finds routes matching the request. If any
-are found, the first one is invoked and an HTTP response is generated and
-returned.
+The request handler. Receives a standard PSGI env hash-ref, creates a new instance of the
+application's context class  (most probably L<Leyland::Context>), performs HTTP negotiations
+and finds routes matching the request. If any are found, the first one is invoked and
+an HTTP response is generated and returned.
 
 You should note that requests to paths that end with a slash will automatically
 be redirected without the trailing slash.
-
-This method will probably be called from C<app.psgi>.
 
 =cut
 
@@ -347,9 +335,9 @@ The following methods are only to be used internally.
 =head2 BUILD()
 
 Automatically called by L<Moo> after instance creation, this method
-loads the context class, application logger, localizer, controllers and
-views. It then find all routes in the controllers, runs the application's
-setup() method, and prints a nice info table to the log.
+runs the applicaiton's C<setup()> method (if any), loads the context class,
+localizer, controllers and views. It then find all routes in the controllers
+and prints a nice info table to the log.
 
 =cut
 
@@ -436,20 +424,18 @@ sub BUILD {
 	$self->_initial_debug_info;
 }
 
-=head2 _handle_exception( $c, $exp )
-
-Receives exceptions thrown by the application (including run-time errors)
-and generates an HTTP response with the error information, in a format
-recognizable by the client.
-
-=cut
+# _handle_exception( $c, $exp )
+# -----------------------------
+# Receives exceptions thrown by the application (including run-time errors)
+# and generates an HTTP response with the error information, in a format
+# recognizable by the client.
 
 sub _handle_exception {
 	my ($self, $c, $exp) = @_;
 
 	# have we caught a Leyland::Exception object? if not, turn it into
 	# a Leyland::Exception
-	$exp = Leyland::Exception->new(code => 500, error => ref $exp ? Dumper($exp) : $exp)
+	$exp = Leyland::Exception->new(code => 500, error => $exp)
 		unless blessed($exp) && $exp->isa('Leyland::Exception');
 
 	# log the error thrown
@@ -503,20 +489,16 @@ sub _handle_exception {
 	);
 }
 
-=head2 _autolog( $msg )
-
-Used by C<Text::SpanningTable> when printing the application's info
-table.
-
-=cut
+# _autolog( $msg )
+# ----------------
+# Used by C<Text::SpanningTable> when printing the application's info
+# table.
 
 sub _autolog { print STDOUT $_[0], "\n" }
 
-=head2 _initial_debug_info()
-
-Prints an info table of the application after initialization.
-
-=cut
+# _initial_debug_info()
+# ---------------------
+# Prints an info table of the application after initialization.
 
 sub _initial_debug_info {
 	my $self = shift;

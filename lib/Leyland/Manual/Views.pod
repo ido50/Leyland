@@ -192,14 +192,13 @@ hash-ref.
 
 When your routes return Perl data structures, they are expected to be
 hash or array references and should not contain blessed values (i.e. objects),
-otherwise Leyland won't be able to serialize the structures. If a route
-of your applications returns a blessed object, Leyland will go renegade
-and use L<Data::Dumper> to serialize it.
+though JSON representations will support objects, assuming they are of
+classes that provide a C<TO_JSON()> method.
 
-The same will happen when you define that your route returns a format that
-Leyland doesn't natively support, like YAML for example. Since Leyland
-doesn't serialize structures to this format automatically, you are expected
-to do so yourself. If you don't, however, Leyland will just use L<Data::Dumper>.
+If a route returns a format that Leyland doesn't natively support, like
+YAML for example, then it is your responsibility to serialize to it, as Leyland
+will not do it for you. Please do so, as Leyland will stubbornly try to encode
+it to JSON otherwise.
 
 =head1 WHAT'S NEXT?
 
@@ -246,7 +245,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

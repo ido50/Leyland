@@ -12,18 +12,20 @@ Leyland::Localizer - Wrapper for the Locale::Wolowitz localization system for Le
 
 =head1 SYNOPSIS
 
-	# in app.psgi
-	my $config = {
-		...
-		locales => '/path/to/myapp/locales',
-		...
-	};
+	# in your app's main package
+	sub setup {
+		return {
+			...
+			locales => '/path/to/myapp/locales',
+			...
+		};
+	}
 
 	# in your controllers
 	$c->set_lang('es'); # use Spanish when responding, possibly because that's what the client wants
 	$c->loc('Hello %1', $c->params->{name});
 
-	# in your views (assuming you're using L<Tenjin>):
+	# in your views (assuming you're using L<Leyland::View::Tenjin|Tenjin>):
 	<h1>[== $c->loc('Hello %1', $c->params->{name}) =]</h1>
 
 =head1 DESCRIPTION
@@ -79,10 +81,6 @@ has 'w' => (
 The following methods are only to be used internally.
 
 =head2 BUILD()
-
-Automatically called by L<Moo> after initializing an instance of this class,
-this method creates a new L<Locale::Wolowitz> object and saves it as the
-"w" attribute.
 
 =cut
 

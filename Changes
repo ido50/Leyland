@@ -1,6 +1,30 @@
 Revision history for Leyland
 
 {{$NEXT}}
+	* Moose has been replaced with Moo. As Moo is Moose compatible, Leyland apps
+	  can still continue using Moose if they so wish.
+	* Calling forward() with no method now only forwards to GET routes, not
+	  to the first route matched.
+	* The json attribute in Leyland::Context now holds a JSON object, not
+	  a JSON::Any object.
+	* Leyland.pm now properly inherits Plack::Component, and has a to_app()
+	  method. The handle() method has been renamed to call() appropriately.
+	* Changed the way setup() and config works. The setup() method is now used
+	  to set Leyland configuration options. It is expected to return a hash-ref
+	  with the configuration options. Application-specific configurations are
+	  still to be provided to the application class in the config attribute. This
+	  attribute is not used by Leyland at all, but available for the application
+	  as needed. With the setup() method now used for configuration purposes, any
+	  application initializations to perform should be moved to Moo(se)'s BUILD method.
+	* Added the ability to set the default return MIME for routes instead of text/html.
+	* Using Devel::Declare::Magic directly as per the deprecation from Devel::Declare.
+	* The leyland command line utility has been removed, you should now scaffold manually.
+	* Logging now comes from Plack middlewares. Leyland::Logger is now a
+	  simple wrapper around the middleware used (providing the same syntax as previous
+	  versions). A default logger that prints to standard output/error is provided.
+	* Simple tests have been created.
+	* Plain text exceptions are no longer returned with Dumper.
+	* No more Wikipedia descriptions for HTTP status codes in exceptions.
 
 0.001007  2011-07-04 22:50:33 Asia/Jerusalem
 	- Bugfix: response object now does not get text/html content

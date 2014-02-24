@@ -58,15 +58,15 @@ the client supports, such as HTML, JSON or XML (or plain text when the client
 does not support any of these formats). If the request was initiated from
 a web browser, then a C<text/html> response with a 400 Bad Request status
 and the provided error message will be returned to the browser. If the
-request was initiated from a JSON client, such as jQuery for example, then
+request was initiated from a JSON client, such as with an AJAX request, then
 the error will be returned in JSON format.
 
 =head1 PRETTIFYING EXCEPTIONS
 
 By default, when returning exceptions to web browsers, the resulting HTML
-will be pretty ugly (I am working on changing it). However, Leyland gives
-you the ability to render exceptions into views/templates, such that even
-exceptions can be returned in the design and layout of your application.
+will be pretty ugly. However, Leyland gives you the ability to render
+exceptions into views/templates, such that even exceptions can be returned
+in the design and layout of your application.
 
 To do this, create a template such as C<error.html>:
 
@@ -107,15 +107,13 @@ The following variables are available inside error templates:
 
 =item * C<$message> - The error message thrown
 
-=item * C<$description> - The description of the error status (these are taken from the aforementioned Wikipedia article)
-
 =back
 
 You can render any kind of templates, even non-HTML ones. In the "mimes"
 hash-ref passed to C<< $c->exception() >>, you can, for example, add a template
 for C<application/json> requests if you see fit.
 
-In the future, Leyland will make it easier to globally set templates for
+In the future, I plan to have Leyland make it easier to globally set templates for
 exceptions instead of on a per-exception basis.
 
 =head1 EXCEPTIONS OF NON-ERROR STATUS CODES
@@ -131,7 +129,11 @@ a 3xx exception (this can most likely happen in C<auto()> and C<pre_route()>
 methods). In which case, also supply a "location" option to C<< $c->exception >>
 with the URI to redirect to:
 
-	$c->exception({ code => 303, error => "Please see the provided URI", location => $c->uri_for('/something') });
+	$c->exception({
+		code => 303,
+		error => "Please see the provided URI",
+		location => $c->uri_for('/something')
+	});
 
 Again, don't do this unless you have a really good reason to.
 
@@ -180,7 +182,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

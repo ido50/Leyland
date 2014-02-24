@@ -2,9 +2,7 @@
 
 Leyland::Manual::FAQ - Frequently asked questions about Leyland
 
-=head1 HOW?
-
-=head2 HOW CAN I MAKE MY APP ANSWER "OPTIONS" REQUESTS?
+=head1 HOW CAN I MAKE MY APP ANSWER "OPTIONS" REQUESTS?
 
 The HTTP C<OPTIONS> request method is used by clients to ask a server what
 are the HTTP methods they can perform on a certain resource (or URI path
@@ -22,19 +20,9 @@ the response headers are returned, without the response body. If you want
 to add support for HEAD requests in your Leyland applications, add the
 L<Head|Plack::Middleware::Head> Plack middleware to C<app.psgi>.
 
-=head1 WHY?
+=head1 WHY ARE YOU NOT USING PLACK'S LOGGING MIDDLEWARES?
 
-=head2 WHY AREN'T YOU USING PLACK'S LOGGING MIDDLEWARES?
-
-As you may know, L<Plack> has some logging middlewares, like L<Plack::Middleware::LogDispatch>,
-which provide PSGI applications with a logger. I really wanted to transfer
-logging resposibilities to these middlewares, but unfortunately they only
-provide a logger on a per-request basis, meaning the application itself
-will not have a logger, while the context object (which is request-specific)
-will. Granted, the request object is where the logger is most used, but
-I didn't want to leave the application without a logger, and decided Leyland
-will provide a logging mechanism of its own. Maybe I'll find a better solution
-in the future, we'll see.
+Since v1.0.0, Leyland does! Look at L<Leyland::Manual::Logging> for more info.
 
 =head1 WHAT'S NEXT?
 
@@ -81,7 +69,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

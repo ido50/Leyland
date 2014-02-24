@@ -12,12 +12,14 @@ Leyland::View::Tenjin - Tenjin view class for Leyland
 
 =head1 SYNOPSIS
 
-	# in app.psgi:
-	my $config = {
-		...
-		views => ['Tenjin'],
-		...
-	};
+	# in your app's class
+	sub setup {
+		return {
+			...
+			views => ['Tenjin'],
+			...
+		};
+	}
 
 =head1 DESCRIPTION
 
@@ -59,14 +61,6 @@ sub render {
 
 	return $self->engine->render($view, $context, $use_layout);
 }
-
-=head1 INTERNAL METHODS
-
-The following methods are only to be used internally.
-
-=head2 _init_engine()
-
-=cut
 
 sub _init_engine {
 	return Tenjin->new({ path => ['views'], postfix => '.html', layout => 'layouts/main.html' });

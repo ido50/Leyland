@@ -21,7 +21,7 @@ Leyland::View - Leyland view base class
 
 	with 'Leyland::View';
 
-	has 'engine' => (is => 'ro', isa => 'SomeEngine', default => sub { SomeEngine->new });
+	has 'engine' => (is => 'ro', default => sub { SomeEngine->new });
 
 	sub render {
 		my ($self, $view, $context, $use_layout) = @_;
@@ -35,15 +35,15 @@ Leyland::View - Leyland view base class
 
 =head1 DESCRIPTION
 
-This L<Moo role|Moo::Role> describes how Leyland view classes, mostly
-used to render HTML responses (but can be used for pretty much anything),
+This L<Moo role|Moo::Role> describes how Leyland view classes - mostly
+used to render HTML responses (but can be used for pretty much anything) -
 are to be built. A view class uses a template engine (such as L<Template::Toolkit> or
 <Tenjin>) to render responses.
 
-Leyland's default view class is L<Leyland::View::Tenjin>, which, as you
-may have guesses, uses the L<Tenjin> template engine.
+Leyland's default view class is L<Leyland::View::Tenjin>, which uses the
+L<Tenjin> template engine.
 
-=head1 REQUIRED METHOSD
+=head1 REQUIRED METHODS
 
 Consuming classes are required to implement the following methods:
 

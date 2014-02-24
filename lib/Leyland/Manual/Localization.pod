@@ -42,7 +42,7 @@ When I write multilingual web applications, I want to let my end-users,
 which are visitors of my application, decide on their preferred language.
 This is why I created L<Locale::Wolowitz>, which is a very simple localization
 system based on JSON. This is also the reason why, as opposed to logging
-and view classes, Leyland only provides Locale::Wolowitz as the choice
+and view classes, Leyland only provides C<Locale::Wolowitz> as the choice
 for data localization (this may or may not change in the future).
 
 Before attempting to start localizing your applications, please read
@@ -51,17 +51,23 @@ the documentation of L<Locale::Wolowitz> (don't worry, it's short and simple).
 =head1 LOCALIZING WITH LEYLAND
 
 To enable data localization with Locale::Wolowitz in Leyland applications,
-you need to add the "locales" configuration option to the C<$config> variable
-in C<app.psgi>. This option should hold the path to a directory in which
-localization files of your applications reside (can be relative), such as
-C<i18n/> under your application's top level directory:
+you need to set the "locales" configuration option in your app's class.
+This option should hold the path to a directory in which localization files
+of your applications reside, such as C<i18n/> under your application's top
+level directory:
 
-	# app.psgi
-	my $config = {
-		app => 'MyApp',
-		locales => './i18n',
-		...
-	};
+	# in MyApp.pm
+
+	sub setup {
+		return {
+			locales => './i18n',
+			...
+		};
+	}
+
+Note that the setting takes an absolute path. You can provide a path relative
+to the current working dir (CWD) using C<./> or C<../>, but whether this works
+or not depends on your operating system.
 
 Once provided, Leyland will attempt to load all localization files located
 in this directory, and add a C<loc()> method to the context object. This
@@ -129,7 +135,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
