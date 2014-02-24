@@ -8,16 +8,16 @@ with 'Leyland::Controller';
 
 prefix { '/articles' }
 
-get '^/(\w+)$' {
-	my $id = shift;
-
-	return { get => $id };
-}
-
 del '^/(\w+)$' {
 	my $id = shift;
 
 	return { del => $id };
+}
+
+get '^/(\w+)$' {
+	my $id = shift;
+
+	return { get => $id };
 }
 
 1;

@@ -40,4 +40,24 @@ is($res->content, 'This is a simple text exception', 'GET exception returns JSON
 $res = $test->request(GET '/default_mime');
 is($res->content_type, 'application/json', 'Default mime is application/json, not text/html');
 
+# lets see that simple GET forwarding works
+$res = $test->request(GET '/forwards/simple_forward');
+is($res->content, 'Index', 'Simple forward ok');
+
+# lets see that an explicit forward works
+$res = $test->request(GET '/forwards/explicit_forward');
+is($res->content, '{"del":"forwarded"}', 'Explicit forward ok');
+
+# lets see that a forward with no method only forwards to a GET route
+$res = $test->request(GET '/forwards/possibly_dangerous_forward');
+is($res->content, '{"get":"forwarded"}', 'Dangerous forward ok');
+
+# lets test passing. first, a route that shouldn't pass
+$res = $test->request(GET '/passes/simple_pass_i_say');
+is($res->content, "simple pass", 'Uninvoked pass ok');
+
+# now test again, but this time tell Leyland to pass
+$res = $test->request(GET '/passes/simple_pass_i_say?pass=1');
+is($res->content, "simple pass i say", 'Simple pass ok');
+
 done_testing();

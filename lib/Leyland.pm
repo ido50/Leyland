@@ -1,6 +1,6 @@
 package Leyland;
 
-# ABSTRACT: Plack-based framework for RESTful web applications
+# ABSTRACT: RESTful web application framework based on Plack
 
 use Moo;
 use parent 'Plack::Component';
@@ -25,7 +25,7 @@ our %INFO;
 
 =head1 NAME
 
-Leyland - Plack-based framework for RESTful web applications
+Leyland - RESTful web application framework based on Plack
 
 =head1 SYNOPSIS
 
@@ -43,11 +43,7 @@ Leyland - Plack-based framework for RESTful web applications
 		locales => './i18n',
 	};
 
-	my $myapp = MyApp->new(config => $config);
-
-	my $app = sub {
-		$myapp->handle(shift);
-	};
+	my $app = MyApp->new(config => $config)->to_app;
 
 =head1 DESCRIPTION
 
