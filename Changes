@@ -22,6 +22,8 @@ Revision history for Leyland
 	* Logging now comes from Plack middlewares. Leyland::Logger is now a
 	  simple wrapper around the middleware used (providing the same syntax as previous
 	  versions). A default logger that prints to standard output/error is provided.
+	* The location of the views directory can now be changed by providing the "view_dir"
+	  configuration option.
 	* Simple tests have been created.
 	* Plain text exceptions are no longer returned with Dumper.
 	* No more Wikipedia descriptions for HTTP status codes in exceptions.

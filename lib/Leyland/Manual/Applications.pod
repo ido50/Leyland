@@ -27,7 +27,7 @@ integral to a Leyland application, which can perfectly live without it.
 	|-------- css/
 	|-------- js/
 	|-------- images/
-	|----- views/ (required)
+	|----- views/ (required, can be changed)
 	|-------- index.html (required)
 	|-------- layouts/ (required)
 	|----------- main.html (required)
@@ -146,6 +146,9 @@ in the language of the template engine of your choice, such as L<Tenjin>
 or L<Template::Toolkit>. Currently, however, Tenjin is the only view class
 available for Leyland applications.
 
+You can change the location of the views directory by providing the C<view_dir>
+configuration option. See L</"CREATING LEYLAND APPLICATIONS"> to learn how.
+
 The C<views/layouts/> subdirectory contains layouts for your views. Views
 from the C<views/> directory, when rendered, can (but doesn't have to) be
 rendered into these layouts. For example, the C<index.html> view can be:
@@ -204,7 +207,9 @@ top class, using the C<setup()> method, like so:
 	sub setup {
 		return {
 			views => ['Tenjin'],
-			locales => './i18n'
+			view_dir => './my/templates/are/here',
+			locales => './i18n',
+			default_mime => 'application/json'
 		};
 	}
 
@@ -214,18 +219,21 @@ The following configuration options are supported:
 
 =over
 
-=item * "views":  takes an array reference with the names of all view
+=item * C<views>:  takes an array reference with the names of all view
 classes to initialize. These are classes of the C<Leyland::View::*> family.
 If you don't provide this option, "['Tenjin']" will be used, and thus
 L<Leyland::View::Tenjin> will be available for your app. View classes you
 define here will be added to the automatically loaded from C<lib/MyApp/View/>,
 if you have any there (you probably don't).
 
-=item * "locales": takes a path (can be relative) to a directory containing
+=item * C<view_dir>: takes a path to a directory containing views/templates
+for your application. By default, this is "views" in the current working directory.
+
+=item * C<locales>: takes a path to a directory containing
 your application's L<Locale::Wolowitz> localization files. If you're not
 gonna localize, you don't need this.
 
-=item * "default_mime": takes a MIME type to use by default as the return MIME
+=item * C<default_mime>: takes a MIME type to use by default as the return MIME
 when defining routes. When a route does not define a return MIME, Leyland "guesses"
 C<text/html>. This is useful if most/all of your routes are of a different MIME
 type, so you don't have to repeat it on every route declaration.

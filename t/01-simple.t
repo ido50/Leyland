@@ -10,7 +10,7 @@ use warnings;
 use HTTP::Request::Common qw/GET POST PUT DELETE/;
 use Plack::Test;
 use LeylandTestApp;
-use Test::More;
+use Test::More tests => 15;
 
 my $app = LeylandTestApp->new->to_app;
 my $test = Plack::Test->create($app);
@@ -59,5 +59,15 @@ is($res->content, "simple pass", 'Uninvoked pass ok');
 # now test again, but this time tell Leyland to pass
 $res = $test->request(GET '/passes/simple_pass_i_say?pass=1');
 is($res->content, "simple pass i say", 'Simple pass ok');
+
+# lets test templating
+$res = $test->request(GET '/template_with_default_layout');
+is($res->content, '<p>Hi, My Name Is Brandon Stark</p>', 'template with default layout ok');
+
+$res = $test->request(GET '/template_with_different_layout');
+is($res->content, '<div>Hi, My Name Is Brandon Stark</div>', 'template with different layout ok');
+
+$res = $test->request(GET '/template_with_no_layout');
+is($res->content, 'Hi, My Name Is Brandon Stark', 'template with no layout ok');
 
 done_testing();

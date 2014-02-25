@@ -64,6 +64,21 @@ Returns the rendered output.
 
 requires 'render';
 
+=head1 PROVIDED ATTRIBUTES
+
+=head2 view_dir
+
+The directory in which views/templates reside. By default, this will be
+'views' (relative to the current working directory).
+
+=cut
+
+has 'view_dir' => (
+	is => 'ro',
+	isa => sub { die "view_dir must be a string" unless !ref $_[0] },
+	default => sub { 'views' }
+);
+
 =head1 AUTHOR
 
 Ido Perlmuter, C<< <ido at ido50.net> >>

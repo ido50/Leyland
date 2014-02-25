@@ -345,6 +345,8 @@ sub BUILD {
 
 	# invoke setup method and get application settings
 	my $settings = $self->can('setup') ? $self->setup : {};
+	$settings->{views} ||= ['Tenjin'];
+	$settings->{view_dir} ||= 'views';
 
 	$self->_set_name(blessed $self);
 
@@ -377,7 +379,7 @@ sub BUILD {
 	# init views, if any, start with view modules in the app
 	my @views = $self->_views;
 	# now load views defined in the config file
-	VIEW: foreach (@{$settings->{views} || ['Tenjin']}) {
+	VIEW: foreach (@{$settings->{views}}) {
 		# have we already loaded this view in the first step?
 		foreach my $v ($self->_views) {
 			next VIEW if blessed($v) eq $_;
@@ -386,13 +388,14 @@ sub BUILD {
 		# attempt to load this view
 		my $class = "Leyland::View::$_";
 		load $class;
-		push(@views, $class->new());
+		push(@views, $class->new(view_dir => $settings->{view_dir}));
 	}
 	$self->_set_views(\@views) if scalar @views;
+
 	# if we haven't loaded any views, load Tenjin
 	unless (scalar @views) {
 		load Leyland::View::Tenjin;
-		$self->_set_views([ Leyland::View::Tenjin->new ]);
+		$self->_set_views([ Leyland::View::Tenjin->new(view_dir => $settings->{view_dir}) ]);
 	}
 
 	# get all routes

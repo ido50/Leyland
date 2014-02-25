@@ -7,6 +7,7 @@ extends 'Leyland';
 sub setup {
 	return {
 		views => ['Tenjin'],
+		view_dir => 't/views',
 		default_mime => 'application/json'
 	};
 }

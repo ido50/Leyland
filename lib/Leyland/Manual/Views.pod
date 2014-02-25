@@ -48,9 +48,9 @@ minus the actual content. When sending a specific resource to a client,
 say a blog article, the content of the article is rendered into the view/template,
 and the output is returned to the client.
 
-Views in a Leyland application reside in the C<views/> directory, located
-in the top level of the application. In this directory, you might have
-files like C<article.html>, C<comment.html>, etc.
+Views in a Leyland application reside in the C<views/> directory, located in the top level
+of the application (unless configured otherwise in the C<setup()> method - see L<Leyland::Manual::Applications/"CONFIGURING LEYLAND APPLICATIONS"> for more information).
+In this directory, you might have files like C<article.html>, C<comment.html>, etc.
 
 The code that actually performs the rendering of a representation is the
 template engine, such as L<Tenjin>, L<Template::Toolkit>, L<HTML::Mason>,

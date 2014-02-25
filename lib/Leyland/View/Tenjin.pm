@@ -16,7 +16,8 @@ Leyland::View::Tenjin - Tenjin view class for Leyland
 	sub setup {
 		return {
 			...
-			views => ['Tenjin'],
+			views => ['Tenjin'], # this is the default
+			view_dir => 'views', # this is also the default
 			...
 		};
 	}
@@ -43,7 +44,7 @@ with 'Leyland::View';
 has 'engine' => (
 	is => 'ro',
 	isa => sub { die "engine must be a Tenjin object" unless ref $_[0] && ref $_[0] eq 'Tenjin' },
-	builder => '_init_engine'
+	writer => '_set_engine'
 );
 
 =head1 OBJECT METHODS
@@ -62,8 +63,22 @@ sub render {
 	return $self->engine->render($view, $context, $use_layout);
 }
 
-sub _init_engine {
-	return Tenjin->new({ path => ['views'], postfix => '.html', layout => 'layouts/main.html' });
+=head1 INTERNAL METHODS
+
+=head2 BUILD
+
+=cut
+
+sub BUILD {
+	my $self = shift;
+
+	$self->_set_engine(
+		Tenjin->new({
+			path => [$self->view_dir],
+			postfix => '.html',
+			layout => 'layouts/main.html'
+		})
+	);
 }
 
 =head1 AUTHOR
