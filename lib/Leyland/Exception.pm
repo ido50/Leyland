@@ -101,6 +101,10 @@ error.
 A boolean value indicating whether to render the errors inside a layout
 view (if exception has the "mimes" attribute). Defaults to true.
 
+=head2 previous_exception
+
+Consumed from L<Throwable>.
+
 =cut
 
 with 'Throwable';
