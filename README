@@ -13,14 +13,14 @@ SYNOPSIS
             my $app = MyApp->new->to_app;
 
 DESCRIPTION
-            B<STOP! BACKWORDS COMPATIBILITY BREAKING CHANGES>
-
-            Leyland v1.0.0 brings small changes that break backwords compatibility.
-            Read the L<upgrading manual|Leyland::Manual::Upgrading> for more information.
-
     Leyland is a Plack-based application framework for building truely
     RESTful, MVC-style web applications. It is feature rich and highly
     extensible.
+
+    STOP! BACKWORDS COMPATIBILITY BREAKING CHANGES
+
+            Leyland v1.0.0 brings small changes that break backwords compatibility.
+            Read the L<upgrading manual|Leyland::Manual::Upgrading> for more information.
 
   FEATURES
     *   Build truely RESTful web applications: Leyland was designed from the
@@ -138,17 +138,27 @@ OBJECT METHODS
     This method is not available by default, but is expected to be provided
     by application classes (though it is not required). If present, it will
     be called upon creation of the application object. The method is
-    expected to provide a hash-ref of Leyland-specific options. The
-    following options are supported:
+    expected to return a hash-ref of Leyland-specific options. The following
+    options are supported:
 
     *   views
 
-        A list of view classes to load.
+        A list of view classes to load. Defaults to "["Tenjin"]".
+
+    *   view_dir
+
+        The path to the directory in which views/templates reside (defaults
+        to "views").
 
     *   locales
 
-        The absolute path to the directory in which localization files (in
+        The path to the directory in which localization files (in
         Locale::Wolowitz's format) reside (if localization is used).
+
+    *   default_mime
+
+        The default return MIME type for routes that lack a specific
+        declaration (defaults to "text/html").
 
   call( \%env )
     The request handler. Receives a standard PSGI env hash-ref, creates a

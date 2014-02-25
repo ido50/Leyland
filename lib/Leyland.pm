@@ -7,7 +7,7 @@ use parent 'Plack::Component';
 use namespace::clean;
 use version 0.77;
 
-our $VERSION = "1.000000";
+our $VERSION = "1.000001";
 $VERSION = eval $VERSION;
 our $DISPLAY_VERSION = version->parse($VERSION)->normal;
 
@@ -41,14 +41,14 @@ Leyland - RESTful web application framework based on Plack
 
 =head1 DESCRIPTION
 
-	B<STOP! BACKWORDS COMPATIBILITY BREAKING CHANGES>
-
-	Leyland v1.0.0 brings small changes that break backwords compatibility.
-	Read the L<upgrading manual|Leyland::Manual::Upgrading> for more information.
-
 Leyland is a L<Plack>-based application framework for building truely
 RESTful, MVC-style web applications. It is feature rich and highly
 extensible.
+
+B<STOP! BACKWORDS COMPATIBILITY BREAKING CHANGES>
+
+	Leyland v1.0.0 brings small changes that break backwords compatibility.
+	Read the L<upgrading manual|Leyland::Manual::Upgrading> for more information.
 
 =head2 FEATURES
 
@@ -227,19 +227,27 @@ C<config> and C<context_class> attributes if you need.
 This method is not available by default, but is expected to be provided by
 application classes (though it is not required). If present, it will be
 called upon creation of the application object. The method is expected to
-provide a hash-ref of Leyland-specific options. The following options are
+return a hash-ref of Leyland-specific options. The following options are
 supported:
 
 =over
 
 =item * views
 
-A list of view classes to load.
+A list of view classes to load. Defaults to C<["Tenjin"]>.
+
+=item * view_dir
+
+The path to the directory in which views/templates reside (defaults to C<views>).
 
 =item * locales
 
-The absolute path to the directory in which localization files (in L<Locale::Wolowitz>'s format)
+The path to the directory in which localization files (in L<Locale::Wolowitz>'s format)
 reside (if localization is used).
+
+=item * default_mime
+
+The default return MIME type for routes that lack a specific declaration (defaults to C<text/html>).
 
 =back
 
