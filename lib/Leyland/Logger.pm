@@ -23,7 +23,7 @@ Leyland::Logger - Wrapper around Plack's logging middlewares
 =head1 DESCRIPTION
 
 This package provides a simple wrapper around the L<Plack> logging middleware
-used by your application. An object of this class is provided to the L<Leyland::Context|context>
+used by your application. An object of this class is provided to the L<context|Leyland::Context>
 object. Read L<Leyland::Manual::Logging> to learn more.
 
 =head1 ATTRIBUTES

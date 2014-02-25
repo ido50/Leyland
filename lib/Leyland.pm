@@ -43,9 +43,8 @@ Leyland - RESTful web application framework based on Plack
 
 	B<STOP! BACKWORDS COMPATIBILITY BREAKING CHANGES>
 
-	Leyland v1.0.0 brings major changes, some of them breaking backwords
-	compatibility (just a little bit). Read the L<Leyland::Manual::Upgrading|upgrading manual>
-	for more information.
+	Leyland v1.0.0 brings small changes that break backwords compatibility.
+	Read the L<upgrading manual|Leyland::Manual::Upgrading> for more information.
 
 Leyland is a L<Plack>-based application framework for building truely
 RESTful, MVC-style web applications. It is feature rich and highly
@@ -66,7 +65,7 @@ serializes resources to representations in the format your client
 wants to receive, like JSON and XML. It will also automatically deserialize
 JSON/XML requests coming from the client to Perl data-structures.
 
-=item * P<Pure UTF-8> - Leyland applications are pure UTF-8. Anything your
+=item * B<Pure UTF-8> - Leyland applications are pure UTF-8. Anything your
 application receives is automatically UTF-8 decoded, and anything your
 application sends is automatically UTF-8 encoded. Leyland apps will not
 accept, nor provide, content in a different character set. If you want to
@@ -113,7 +112,7 @@ manual is where you're most likely to find your answers. Or not.
 =head2 UPGRADING FROM VERSION 0.1.7 OR SMALLER
 
 Major changes have been made in Leyland version 1.0.0. While most should be
-backwords compatible, some are not. Please take a look at the L<Leyland::Manual::Upgrading|upgrading manual>
+backwords compatible, some are not. Please take a look at the L<upgrading manual|Leyland::Manual::Upgrading>
 for a complete list of changes and a simple guide for upgrading existing applications.
 
 =head2 WHAT'S WITH THE NAME?
@@ -606,9 +605,9 @@ I wish to thank the following people:
 
 =over
 
-=item * L<http://search.cpan.org/~sknpp/|Sebastian Knapp> for submitting bug fixes
+=item * L<Sebastian Knapp|http://search.cpan.org/~sknpp/> for submitting bug fixes
 
-=item * L<http://search.cpan.org/~mdorman/|Michael Alan Dorman> for some helpful ideas
+=item * L<Michael Alan Dorman|http://search.cpan.org/~mdorman/> for some helpful ideas
 
 =back
 

@@ -25,7 +25,7 @@ Leyland::Localizer - Wrapper for the Locale::Wolowitz localization system for Le
 	$c->set_lang('es'); # use Spanish when responding, possibly because that's what the client wants
 	$c->loc('Hello %1', $c->params->{name});
 
-	# in your views (assuming you're using L<Leyland::View::Tenjin|Tenjin>):
+	# in your views (assuming you're using L<Tenjin|Leyland::View::Tenjin>):
 	<h1>[== $c->loc('Hello %1', $c->params->{name}) =]</h1>
 
 =head1 DESCRIPTION

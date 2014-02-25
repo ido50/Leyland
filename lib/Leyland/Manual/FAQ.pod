@@ -26,8 +26,8 @@ Since v1.0.0, Leyland does! Look at L<Leyland::Manual::Logging> for more info.
 
 =head1 WHAT'S NEXT?
 
-This is the last stop of the Leyland manual. You can L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">
-if you wish or start writing your applications.
+Refer to L<Leyland::Manual::Upgrading> for information about upgrading Leyland
+for existing applications, or L<return to the table of contents|Leyland::Manual/"TABLE OF CONTENTS">.
 
 =head1 AUTHOR
 

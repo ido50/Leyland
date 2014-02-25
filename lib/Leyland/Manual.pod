@@ -107,6 +107,9 @@ Leyland applications.
 =item 11. L<Leyland::Manual::FAQ> - Contains frequently asked questions
 and their answers.
 
+=item 12. L<Leyland::Manual::Upgrading> - Contains information about upgrading
+Leyland for existing applications.
+
 =back
 
 =head1 AUTHOR
