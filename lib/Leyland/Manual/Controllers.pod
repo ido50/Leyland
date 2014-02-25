@@ -5,8 +5,8 @@ Leyland::Manual::Controllers - Creating Leyland controllers
 =head1 CONTROLLERS
 
 Controllers are the main building blocks of your application. They define
-the resources available to clients and perform whatever logic your application
-needs to perform.
+the resources (or routes) available to clients and perform whatever logic
+your application needs to perform.
 
 Every controller has one or more routes. A route is a path in your web
 application, like "/posts" or "/articles/139". Of course, it's much more
@@ -24,22 +24,22 @@ root route handles requests directly to C<http://example.com/>.
 
 Different controllers can share the same prefix, which is useful if you
 want to categorize your routes according to some common properties. Note,
-however, that when havin two or more routes with the exact same declaration in two
+however, that when having two or more routes with the exact same declaration in two
 or more controllers that share the same prefix, Leyland's behavior is
 undefined, so please avoid such situations.
 
 All controllers of your application should be located under the C<lib/MyApp/Controller/>
 directory of your application. Of course, you can nest controllers
-infinitely, Leyland won't care.
+infinitely, Leyland won't care (but Perl mostly would).
 
-A controller class is a L<Moose> class that consumes the L<Leyland::Controller> role.
+A controller class is a L<Moo>/L<Moose> class that consumes the L<Leyland::Controller> role.
 A minimal Leyland controller will look something like this:
 
 	package MyApp::Controller::Root;
 
-	use Moose;
+	use Moo;
 	use Leyland::Parser;
-	use namespace::autoclean;
+	use namespace::clean;
 
 	with 'Leyland::Controller';
 
@@ -49,7 +49,7 @@ A minimal Leyland controller will look something like this:
 		$c->template('index.html');
 	}
 	
-	__PACKAGE__->meta->make_immutable;
+	1;
 
 This controller, which is an application's root controller, has an empty
 prefix (non-root controllers will have prefixes that start with a slash,
@@ -132,7 +132,7 @@ Let's look at a pretty complete example:
 
 The above route will only match C<GET> requests whose path is exactly
 "/posts" (assuming we're on the root controller, or any controller that
-has an empty prefix). It will only accept text/html or application/json
+has an empty prefix). It will only accept C<text/html> or C<application/json>
 from the client, and will only return JSON. The following HTTP methods
 are available:
 
@@ -152,7 +152,7 @@ application data will not be tampered as a result of C<GET> requests.
 
 =item * any: will match any request method. Please don't use it. Really.
 But if you do, take into account that if a route that matches a certain
-path exists with the exact request method, and another routes matches the
+path exists with the exact request method, and another route matches the
 same path but with the 'any' method, then the exact route will take
 precedence.
 
@@ -161,9 +161,11 @@ precedence.
 Read L<Leyland::Manual::FAQ> if you want to know how to fulfil C<OPTIONS>
 and C<HEAD> HTTP request methods.
 
-If your route doesn't define the "accepts" option, it will only accept
-C<text/html> requests (and requests that don't have a content type). The same
-goes for "returns". C<POST> and C<PUT> routes also automatically accept the
+If your route doesn't define the "accepts" option, it will accept any requests
+that do not have a content type (mostly GET routes). If your route doesn't
+define a "returns" option, a default of C<text/html> is used, unless a different
+default is defined in your application class (see L<Leyland::Manual::Applications/"CONFIGURING LEYLAND APPLICATIONS">
+to learn how). C<POST> and C<PUT> routes also automatically accept the
 C<application/x-www-form-urlencoded content> type.
 
 A route can also have the "is" option, which takes one of two values:
@@ -184,8 +186,7 @@ More about forwarding later on.
 
 As you've probably already noticed, the context object is automatically
 available to the route's subroutine. This is not the only variable available
-to subroutines - the controller object is also available as C<$self>, but
-is rarely used.
+to subroutines - the controller object is also available as C<$self>.
 
 The only thing that remains is actually writing your route logic. This is
 your field, but keep in mind you can use Leyland's logging facilities,
@@ -213,8 +214,8 @@ the order they were defined. For example:
 	}
 
 Be careful when defining route regexes that aren't strict (i.e. don't match
-from the beginning and/or to the end), like C<get 'posts'> for example,
-as you're likely to get the wrong results.
+from the beginning and/or to the end using the C<^> and C<$> metacharacters),
+like C<get 'posts'> for example, as you're likely to get the wrong results.
 
 =head1 RETURNING OUTPUT
 
@@ -227,10 +228,10 @@ also describes Leyland's automatic data serialization).
 Often, you will find it useful to internally forward requests to other
 routes. These may be routes whose only purpose is to serve other routes.
 Forwarding is performed by the C<forward()> method of L<Leyland::Context>.
-It expects a path to forward to, and possibly a list of arguments to pass
-to the route:
+It expects a path (prefixed by an HTTP method) to forward to, and possibly
+a list of arguments to pass to the route:
 
-	$c->forward('/posts', $post->id);
+	$c->forward('GET:/posts', $post->id);
 
 Some routes, as explained earlier, can only be forwarded to, and clients
 cannot directly access them. These are routes that are defined with the
@@ -238,23 +239,12 @@ C<is 'internal'> rule in the route's declaration.
 
 When you forward a request to a different route, Leyland will not perform
 negotation with L<Leyland::Negotiator> like it does in the beginning of
-the request, but instead will only find the first route that matches the
-provided path and invoke it. So, theoretically, a POST route can forward
-to a GET route, Leyland won't care. At times, however, multiple routes,
-all accepting different HTTP methods, can match the same path. This can
-make it difficult to know which route is gonna be forwarded to, and you
-probably want to forward to a specific route. In this case, Leyland allows
-you to define the route's HTTP method, like so:
+the request, but instead will only attempt to find the route and invoke it.
+If you are forwarding to a C<GET> route, you can change the above line to:
 
-	$c->forward('GET:/posts', $post->id);
+	$c->forward('/posts', $post->id);
 
-	get '^/posts$' is 'internal' {
-		my $post_id = shift;
-		# do stuff
-	}
-
-So what you need to do is prepend the HTTP method (in it's proper capitalization)
-and a colon to the path.
+But for any other HTTP method, you I<must> tell Leyland the method.
 
 When a request is forwarded to another route, it returns to the route that
 performed the forward (with the output it generated), so the route that
@@ -271,8 +261,8 @@ will also be available, but after the captures.
 An interesting thing about forwards, is that they return the output before
 serialization. So say you have an external route (i.e. not internal) that
 returns a Perl data structure. When directly matched, the data structure
-will be serialized and returned to the client. When internally forwarded
-to, however, the forwarding route will not get the serialized data, but
+will be serialized and returned to the client (say to JSON). When internally
+forwarded to, however, the forwarding route will not get the serialized data, but
 the Perl data structure.
 
 Another thing to note about forwarding is that arguments you pass via the
@@ -285,8 +275,6 @@ Will not match the C<^/posts/(\d+)$> route, but only the C<^/posts$> route.
 If you want to forward to the first one, you need to do this:
 
 	$c->forward('/posts/'.$post_id);
-
-You should keep that in mind as it can get confusing.
 
 =head1 PASSING REQUESTS
 
@@ -313,7 +301,7 @@ use C<return>:
 HTTP redirects are frequent and common. I will not detail situations in
 which redirects are appropriate. Redirecting is easy - all you need to
 do is define a URI to redirect to in the response object (located under
-the "res" attribute of the context object):
+the C<res> attribute of the context object):
 
 	$c->res->redirect($c->uri_for('/posts'));
 
@@ -321,7 +309,7 @@ Note that you have to provide the absolute URI to redirect to, not a relative
 path.
 
 Once again, redirection does not happen immediately. Sometimes it is useful
-to set a redirect, and still continue handling the request and/or performing
+to set a redirect, and still continue handling the request and/or perform
 some other operations. If, however, you want to redirect immediately,
 use C<return>:
 
@@ -372,7 +360,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

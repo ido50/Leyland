@@ -1,9 +1,10 @@
 package Leyland;
 
-# ABSTRACT: Plack-based framework for RESTful web applications
+# ABSTRACT: RESTful web application framework based on Plack
 
-use Moose;
-use namespace::autoclean;
+use Moo;
+use parent 'Plack::Component';
+use namespace::clean;
 use version 0.77;
 
 our $VERSION = "1.000000";
@@ -11,18 +12,20 @@ $VERSION = eval $VERSION;
 our $DISPLAY_VERSION = version->parse($VERSION)->normal;
 
 use Carp;
-use Data::Dumper;
 use Encode;
 use Leyland::Localizer;
 use Leyland::Negotiator;
 use Module::Load;
+use Scalar::Util qw/blessed/;
 use Text::SpanningTable;
 use Tie::IxHash;
 use Try::Tiny;
 
+our %INFO;
+
 =head1 NAME
 
-Leyland - Plack-based framework for RESTful web applications
+Leyland - RESTful web application framework based on Plack
 
 =head1 SYNOPSIS
 
@@ -34,62 +37,41 @@ Leyland - Plack-based framework for RESTful web applications
 	use warnings;
 	use MyApp;
 
-	my $config = {
-		app => 'MyApp',
-		views => ['Tenjin'],
-		locales => './i18n',
-	};
-
-	my $myapp = MyApp->new(config => $config);
-
-	my $app = sub {
-		$myapp->handle(shift);
-	};
+	my $app = MyApp->new->to_app;
 
 =head1 DESCRIPTION
 
-Leyland is a L<Plack>-based application framework for building truely
-RESTful, MVC-style web applications.
+	B<STOP! BACKWORDS COMPATIBILITY BREAKING CHANGES>
 
-"Another application framework?" you ask? Well yes! You see, after several
-years of L<Catalyst> development, I grew tired of Catalyst's bloat, and
-the fact that it made it very hard (pretty much impossible if you ask me)
-to create truely RESTful applications. I then moved for a short while to
-L<Dancer>, which had a nice syntax for defining routes and had at least some REST properties,
-but I quickly found it didn't fit my needs as well, and that it also made
-it very difficult to write truely RESTful applications. I also really missed
-Catalyst's "context object" and some of its other features, and simply
-couldn't get used to Dancer's whole functional syntax you're supposed to
-use inside your routes. While there were quite a few other options on CPAN,
-I didn't like any of them, plus pretty much none of them were native Plack
-frameworks, which for me is a bit of a minus (can't blame them though as
-most of them predate Plack), so I decided to create my own framework,
-based on Plack and designed to my liking. This is the mess that I've created.
-You will find that it mostly resembles Catalyst, while providing a syntax
-mostly similar to Dancer, but with a lot of crazy ideas of its own.
+	Leyland v1.0.0 brings small changes that break backwords compatibility.
+	Read the L<upgrading manual|Leyland::Manual::Upgrading> for more information.
+
+Leyland is a L<Plack>-based application framework for building truely
+RESTful, MVC-style web applications. It is feature rich and highly
+extensible.
 
 =head2 FEATURES
 
 =over
 
-=item * Build truely RESTful web applications - Leyland was designed from
+=item * B<Build truely RESTful web applications:> Leyland was designed from
 the ground up according to the Representational State Transfer style of
 software architecture. Leyland applications perform real HTTP negotiations,
 (can) provide different representations of the same resource easily, respond
 with proper HTTP status codes, throw real HTTP exceptions, etc.
 
-=item * Automatic data (de)serialization - Leyland does by itself the boring task
-of serializing resources to representations in the format your client
-wants to receive, like JSON and XML. It will also deserialize JSON/XML
-requests to Perl data-structures automatically.
+=item * B<Automatic data (de)serialization> - Leyland automatically
+serializes resources to representations in the format your client
+wants to receive, like JSON and XML. It will also automatically deserialize
+JSON/XML requests coming from the client to Perl data-structures.
 
-=item * Pure UTF-8 - Leyland applications are pure UTF-8. Anything your
+=item * B<Pure UTF-8> - Leyland applications are pure UTF-8. Anything your
 application receives is automatically UTF-8 decoded, and anything your
 application sends is automatically UTF-8 encoded. Leyland apps will not
 accept, nor provide, content in a different character set. If you want to
 use different/multiple encodings, then Leyland is not for you.
 
-=item * Localize for the client, not the server - Pretty much every other
+=item * B<Localize for the client, not the server> - Pretty much every other
 application framework only concerns itself with localizing the application
 to the locale of the machine on which it is running. I find that this is
 rarely useful nor interesting to the application developer. Leyland localizes for
@@ -98,39 +80,28 @@ the client, not the server. If the client wants to view your application
 Hebrew, then you can easily provide him with Hebrew representations.
 Leyland uses L<Locale::Wolowitz> for this purpose.
 
-=item * Easy deployment and middleware support via L<Plack> - Leyland doesn't
+=item * B<< Easy deployment and middleware support via L<Plack> >> - Leyland doesn't
 support Plack, it is dependant on it. Leyland's entire session support,
 for example, depends on Plack's L<Session|Plack::Middleware::Session>
 middleware. Use the full power of Plack in your Leyland application.
 
-=item * Less code, better programs - One thing I really hated about Catalyst
-was that I had to create stupid pointless classes that don't do anything
-but wrap a base class, just so I can have a new view class or something.
-While not as lightweight as Dancer, Leyland does a lot of the boring work
-for you, so you can concentrate more on your application.
+=item * B<Lightweight> - Leyland is much smaller than L<Catalyst> or other
+major frameworks, while still providing lots of features. While it is not
+a "micro-framework", it is pretty small. If you're looking for an extremely
+lightweight solution, my other framework - L<McBain> - might fit your need.
 
-=item * Flexible, extensible, unbreakable - Well, it's not unbreakable,
-but Leyland was designed to be as flexible and as extensible as possible - where
-flexibility matters, and strict - where constistency and convention are appropriate.
-Leyland goes to great lengths to give you the ability to do things the
-way you want to, and more importantly - the way your end-users want to.
-Your applications listen to your users' preferences and automatically decide on a
-suitable course of action. Leyland is also L<Moose> based, making it easy
-to extend and tweak its behavior.
+=item * B<Flexible, extensible> - Leyland was designed to be as flexible and
+as extensible as possible - where flexibility matters, and strict - where
+constistency and convention are appropriate. Leyland goes to great lengths
+to give you the ability to do things the way you want to, and more
+importantly - the way your end-users want to. Your applications listen to
+your users' preferences and automatically decide on a suitable course of action.
+Leyland is also L<Moo> based, making it easy to extend and tweak its behavior
+(and making it L<Moose> compatible).
 
-=item * Doesn't have a pony - You don't really need a pony, do you?
+=item * B<Doesn't have a pony> - You don't really need a pony, do you?
 
 =back
-
-=head2 STATUS
-
-Development of Leyland began August 2010. I have been using it extensively
-for several projects, some of them already in production. Therefore, the
-API has somewhat stabilized and I do not consider it in alpha status.
-That said, Leyland still is immature, and I cannot guarantee that API
-changes won't be made, nor that it is bug free or even secure enough. If
-you're thinking of using Leyland for a production project, please test it
-thoroughly beforehand.
 
 =head2 MANUAL / TUTORIAL / GUIDE / GIBBERISH
 
@@ -138,36 +109,39 @@ To learn about using Leyland, please refer to the L<Leyland::Manual>. The
 documentation of this distribution's classes is for reference only, the
 manual is where you're most likely to find your answers. Or not.
 
+=head2 UPGRADING FROM VERSION 0.1.7 OR SMALLER
+
+Major changes have been made in Leyland version 1.0.0. While most should be
+backwords compatible, some are not. Please take a look at the L<upgrading manual|Leyland::Manual::Upgrading>
+for a complete list of changes and a simple guide for upgrading existing applications.
+
 =head2 WHAT'S WITH THE NAME?
 
 Leyland is named after Mr. Bean's clunker of a car - the British Leyland
 Mini 1000. I don't know why.
 
+=head1 EXTENDS
+
+L<Plack::Component>
+
 =head1 ATTRIBUTES
+
+=head2 name
+
+The package name of the application, for example C<MyApp> or C<My::App>.
+Automatically created.
 
 =head2 config
 
-A hash-ref of configuration options for the application. If not provided,
-a default configuration will be used.
+A hash-ref of configuration options supplied to the app by the PSGI file.
+These options are purely for the writer of the application and have nothing
+to do with Leyland itself.
 
 =head2 context_class
 
 The name of the class to be used as the context class for every request.
 Defaults to L<Leyland::Context>. If provided, the class must extend
 Leyland::Context.
-
-=head2 name
-
-The package name of the application, for example C<MyApp> or C<My::App>.
-Automatically created from the app's configuration. If config doesn't
-define a name, 'Leyland' will be used.
-
-=head2 log
-
-A logger object that C<does> L<Leyland::Logger>, providing the application
-with logging capabilities. Automatically built from the app's config, unless
-config doesn't define a logger, in which case L<Leyland::Logger::STDERR>
-will be used.
 
 =head2 localizer
 
@@ -184,11 +158,6 @@ configuration. If none defined, L<Tenjin> is used by default.
 A L<Tie::IxHash> object holding all routes defined in the application's
 controllers. Automatically created, not to be used directly by applications.
 
-=head2 req_counter
-
-An integer representing the number of requests handled by the application.
-Automatically created.
-
 =head2 cwe
 
 The plack environment in which the application is running. This is the
@@ -198,69 +167,101 @@ changing C<PLACK_ENV> directly).
 
 =cut
 
-has 'config' => (is => 'ro', isa => 'HashRef', default => sub { __PACKAGE__->_default_config });
+has 'name' => (
+	is => 'ro',
+	isa => sub { die "name must be a scalar" if ref $_[0] },
+	writer => '_set_name'
+);
 
-has 'context_class' => (is => 'ro', isa => 'Str', default => 'Leyland::Context');
+has 'config' => (
+	is => 'ro',
+	isa => sub { die "config must be a hash-ref" unless ref $_[0] && ref $_[0] eq 'HASH' },
+	default => sub { {} }
+);
 
-has 'name' => (is => 'ro', isa => 'Str', required => 1);
+has 'context_class' => (
+	is => 'ro',
+	isa => sub { die "context_class must be a scalar" if ref $_[0] },
+	writer => '_set_context_class',
+	default => 'Leyland::Context'
+);
 
-has 'localizer' => (is => 'ro', isa => 'Leyland::Localizer', predicate => 'has_localizer', writer => '_set_localizer');
+has 'localizer' => (
+	is => 'ro',
+	predicate => 'has_localizer',
+	writer => '_set_localizer'
+);
 
-has 'views' => (is => 'ro', isa => 'ArrayRef', predicate => 'has_views', writer => '_set_views');
+has 'views' => (
+	is => 'ro',
+	isa => sub { die "views must be an array-ref" unless ref $_[0] && ref $_[0] eq 'ARRAY' },
+	predicate => 'has_views',
+	writer => '_set_views'
+);
 
-has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
+has 'routes' => (
+	is => 'ro',
+	isa => sub { die "routes must be a Tie::IxHash object" unless ref $_[0] && ref $_[0] eq 'Tie::IxHash' },
+	predicate => 'has_routes',
+	writer => '_set_routes'
+);
 
-has 'req_counter' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_req_counter');
-
-has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
+has 'cwe' => (
+	is => 'ro',
+	isa => sub { die "cwe must be a scalar" if ref $_[0] },
+	default => sub { $ENV{PLACK_ENV} }
+);
 
 =head1 CLASS METHODS
 
 =head2 new( [ %attrs ] )
 
 Creates a new instance of this class. None of the attributes are required
-(in fact, you shouldn't pass most of them), but you will mostly pass
-the C<config> attribute, and possibly the C<context_class> attribute.
+(in fact, you shouldn't pass most of them), though you can pass the
+C<config> and C<context_class> attributes if you need.
 
 =head1 OBJECT METHODS
 
 =head2 setup()
 
-Meant to be overridden by applications, this is automatically called
-right after the application has been initialized, so it is useful for
-one-time initializations your application might need to perform. If not
-overridden, this method does nothing.
+This method is not available by default, but is expected to be provided by
+application classes (though it is not required). If present, it will be
+called upon creation of the application object. The method is expected to
+provide a hash-ref of Leyland-specific options. The following options are
+supported:
 
-=cut
+=over
 
-sub setup { 1 }
+=item * views
 
-=head2 handle( \%env )
+A list of view classes to load.
 
-Receives a Plack environment hash-ref of an HTTP request, creates a new
-instance of the application's context class (most probably L<Leyland::Context>),
-performs HTTP negotiations and finds routes matching the request. If any
-are found, the first one is invoked and an HTTP response is generated and
-returned.
+=item * locales
+
+The absolute path to the directory in which localization files (in L<Locale::Wolowitz>'s format)
+reside (if localization is used).
+
+=back
+
+=head2 call( \%env )
+
+The request handler. Receives a standard PSGI env hash-ref, creates a new instance of the
+application's context class  (most probably L<Leyland::Context>), performs HTTP negotiations
+and finds routes matching the request. If any are found, the first one is invoked and
+an HTTP response is generated and returned.
 
 You should note that requests to paths that end with a slash will automatically
 be redirected without the trailing slash.
 
-This method will probably be called from C<app.psgi>.
-
 =cut
 
-sub handle {
+sub call {
 	my ($self, $env) = @_;
-
-	# increment the request counter
-	$self->_set_req_counter($self->req_counter + 1);
 
 	# create the context object
 	my $c = $self->context_class->new(
 		app => $self,
-		env => $env,
-		num => $self->req_counter
+		env => $env
 	);
 
 	# does the request path have an "unnecessary" trailing slash?
@@ -330,40 +331,29 @@ controllers.
 
 The following methods are only to be used internally.
 
-=cut
-
-around BUILDARGS => sub {
-	my ($orig, $class, %opts) = @_;
-
-	# parse the config variable, take out environment-specific parameters
-	if ($opts{config}) {
-		my $envs = delete $opts{config}->{environments};
-		if ($envs->{$ENV{PLACK_ENV}}) {
-			foreach (keys %{$envs->{$ENV{PLACK_ENV}}}) {
-				$opts{config}->{$_} = delete $envs->{$ENV{PLACK_ENV}}->{$_};
-			}
-		}
-		delete $opts{config}->{environments};
-		$opts{config}->{app} ||= 'MyApp';
-	}
-
-	$opts{name} = $opts{config} ? $opts{config}->{app} : 'MyApp';
-
-	# create the object
-	return $class->$orig(%opts);
-};
-
 =head2 BUILD()
 
-Automatically called by L<Moose> after instance creation, this method
-loads the context class, application logger, localizer, controllers and
-views. It then find all routes in the controllers, runs the application's
-setup() method, and prints a nice info table to the log.
+Automatically called by L<Moo> after instance creation, this method
+runs the applicaiton's C<setup()> method (if any), loads the context class,
+localizer, controllers and views. It then find all routes in the controllers
+and prints a nice info table to the log.
 
 =cut
 
 sub BUILD {
 	my $self = shift;
+
+	# invoke setup method and get application settings
+	my $settings = $self->can('setup') ? $self->setup : {};
+	$settings->{views} ||= ['Tenjin'];
+	$settings->{view_dir} ||= 'views';
+
+	$self->_set_name(blessed $self);
+
+	$INFO{default_mime} = $settings->{default_mime} || 'text/html';
+
+	$self->_set_context_class($settings->{context_class})
+		if $settings->{context_class};
 
 	# load the context class
 	load $self->context_class;
@@ -376,12 +366,12 @@ sub BUILD {
 	# with it
 	load Module::Pluggable;
 	Module::Pluggable->import(
-		search_path => [$self->config->{app}.'::View'],
+		search_path => [$self->name.'::View'],
 		sub_name => '_views',
 		instantiate => 'new'
 	);
 	Module::Pluggable->import(
-		search_path => [$self->config->{app}.'::Controller'],
+		search_path => [$self->name.'::Controller'],
 		sub_name => 'controllers',
 		require => 1
 	);
@@ -389,7 +379,7 @@ sub BUILD {
 	# init views, if any, start with view modules in the app
 	my @views = $self->_views;
 	# now load views defined in the config file
-	VIEW: foreach (@{$self->config->{views} || []}) {
+	VIEW: foreach (@{$settings->{views}}) {
 		# have we already loaded this view in the first step?
 		foreach my $v ($self->_views) {
 			next VIEW if blessed($v) eq $_;
@@ -398,13 +388,14 @@ sub BUILD {
 		# attempt to load this view
 		my $class = "Leyland::View::$_";
 		load $class;
-		push(@views, $class->new());
+		push(@views, $class->new(view_dir => $settings->{view_dir}));
 	}
 	$self->_set_views(\@views) if scalar @views;
+
 	# if we haven't loaded any views, load Tenjin
 	unless (scalar @views) {
 		load Leyland::View::Tenjin;
-		$self->_set_views([ Leyland::View::Tenjin->new ]);
+		$self->_set_views([ Leyland::View::Tenjin->new(view_dir => $settings->{view_dir}) ]);
 	}
 
 	# get all routes
@@ -431,32 +422,26 @@ sub BUILD {
 	}
 	$self->_set_routes($routes);
 
-	# invoke setup method
-	$self->setup();
-
 	# print debug information
 	$self->_initial_debug_info;
 }
 
-=head2 _handle_exception( $c, $exp )
-
-Receives exceptions thrown by the application (including run-time errors)
-and generates an HTTP response with the error information, in a format
-recognizable by the client.
-
-=cut
+# _handle_exception( $c, $exp )
+# -----------------------------
+# Receives exceptions thrown by the application (including run-time errors)
+# and generates an HTTP response with the error information, in a format
+# recognizable by the client.
 
 sub _handle_exception {
 	my ($self, $c, $exp) = @_;
 
 	# have we caught a Leyland::Exception object? if not, turn it into
 	# a Leyland::Exception
-	$exp = Leyland::Exception->new(code => 500, error => ref $exp ? Dumper($exp) : $exp)
-		unless blessed $exp && $exp->isa('Leyland::Exception');
+	$exp = Leyland::Exception->new(code => 500, error => $exp)
+		unless blessed($exp) && $exp->isa('Leyland::Exception');
 
 	# log the error thrown
-	my $err = $exp->error || $Leyland::CODES->{$exp->code}->[0];
-	$c->log->info('Exception thrown: '.$exp->code.", message: $err");
+	$c->log->info('Exception thrown: '.$exp->code.", message: ".$exp->error);
 
 	# is this a redirecting exception?
 	if ($exp->code =~ m/^3\d\d$/ && $exp->has_location) {
@@ -467,7 +452,7 @@ sub _handle_exception {
 	# are we on the development environment? if so, and the client
 	# accepts HTML (and the exception has no HTML MIME), we croak
 	# with a simple error message so that Plack displays a nice stack trace
-	croak $self->name.' croaked with HTTP status code '.$exp->code.' and error message "'.$err.'"'
+	croak $self->name.' croaked with HTTP status code '.$exp->code.' and error message "'.$exp->error.'"'
 		if $self->cwe eq 'development' && $c->accepts('text/html') && (!$exp->has_mimes || !$exp->has_mime('text/html'));
 
 	# do we have templates for any of the client's requested MIME types?
@@ -490,7 +475,11 @@ sub _handle_exception {
 			$exp->code,
 			{ 'Content-Type' => $_->{mime}.'; charset=UTF-8' },
 			$c->_serialize($exp->hash, $_->{mime})
-		) if $_->{mime} eq 'text/html' || $_->{mime} eq 'application/xhtml+xml' || $_->{mime} eq 'application/json' || $_->{mime} eq 'application/atom+xml' || $_->{mime} eq 'application/xml';
+		) if	$_->{mime} eq 'text/html' ||
+			$_->{mime} eq 'application/xhtml+xml' ||
+			$_->{mime} eq 'application/json' ||
+			$_->{mime} eq 'application/atom+xml' ||
+			$_->{mime} eq 'application/xml';
 	}
 
 	# We do not support none of the MIME types the client wants,
@@ -498,32 +487,20 @@ sub _handle_exception {
 	return $c->_respond(
 		$exp->code,
 		{ 'Content-Type' => 'text/plain; charset=UTF-8' },
-		Dumper($exp->error)
+		$exp->error
 	);
 }
 
-=head2 _default_config()
-
-Returns a default configuration hash-ref.
-
-=cut
-
-sub _default_config { { app => 'Leyland', views => ['Tenjin'] } }
-
-=head2 _autolog( $msg )
-
-Used by C<Text::SpanningTable> when printing the application's info
-table.
-
-=cut
+# _autolog( $msg )
+# ----------------
+# Used by C<Text::SpanningTable> when printing the application's info
+# table.
 
 sub _autolog { print STDOUT $_[0], "\n" }
 
-=head2 _initial_debug_info()
-
-Prints an info table of the application after initialization.
-
-=cut
+# _initial_debug_info()
+# ---------------------
+# Prints an info table of the application after initialization.
 
 sub _initial_debug_info {
 	my $self = shift;
@@ -539,7 +516,7 @@ sub _initial_debug_info {
 	$t1->exec(\&_autolog);
 
 	$t1->hr('top');
-	$t1->row($self->config->{app}.' (powered by Leyland '.$DISPLAY_VERSION.')');
+	$t1->row($self->name.' (powered by Leyland '.$DISPLAY_VERSION.')');
 	$t1->dhr;
 	$t1->row('Current working environment: '.$self->cwe);
 	$t1->row('Avilable views: '.join(', ', @views));
@@ -581,37 +558,44 @@ sub _initial_debug_info {
 }
 
 $Leyland::CODES = {
-	200 => ['OK', 'Standard response for successful HTTP requests.'],
-	201 => ['Created', 'The request has been fulfilled and resulted in a new resource being created.'],
-	202 => ['Accepted', 'The request has been accepted for processing, but the processing has not been completed.'],
-	204 => ['No Content', 'The server successfully processed the request, but is not returning any content.'],
-	
-	300 => ['Multiple Choices', 'Indicates multiple options for the resource that the client may follow.'],
-	301 => ['Moved Permanently', 'This and all future requests should be directed to the given URI.'],
-	302 => ['Found', 'Temporary redirect.'],
-	303 => ['See Other', 'The response to the request can be found under another URI using a GET method.'],
-	304 => ['Not Modified', 'Indicates the resource has not been modified since last requested.'],
-	307 => ['Temporary Redirect', 'The request should be repeated with another URI, but future requests can still use the original URI.'],
-	
-	400 => ['Bad Request', 'The request cannot be fulfilled due to bad syntax.'],
-	401 => ['Unauthorized', 'Similar to 403 Forbidden, but specifically for use when authentication is possible but has failed or not yet been provided.'],
-	403 => ['Forbidden', 'The request was a legal request, but the server is refusing to respond to it.'],
-	404 => ['Not Found', 'The requested resource could not be found but may be available again in the future.'],
-	405 => ['Method Not Allowed', 'A request was made of a resource using a request method not supported by that resource.'],
-	406 => ['Not Acceptable', 'The requested resource is only capable of generating content not acceptable according to the Accept headers sent in the request.'],
-	408 => ['Request Timeout', 'The server timed out waiting for the request.'],
-	409 => ['Conflict', 'Indicates that the request could not be processed because of conflict in the request, such as an edit conflict.'],
-	410 => ['Gone', 'Indicates that the resource requested is no longer available and will not be available again.'],
-	411 => ['Length Required', 'The request did not specify the length of its content, which is required by the requested resource.'],
-	412 => ['Precondition Failed', 'The server does not meet one of the preconditions that the requester put on the request.'],
-	413 => ['Request Entity Too Large', 'The request is larger than the server is willing or able to process.'],
-	414 => ['Request-URI Too Long', 'The URI provided was too long for the server to process.'],
-	415 => ['Unsupported Media Type', 'The request entity has a media type which the server or resource does not support.'],
-	417 => ['Expectation Failed', 'The server cannot meet the requirements of the Expect request-header field.'],
-	
-	500 => ['Internal Server Error', 'A generic error message, given when no more specific message is suitable.'],
-	501 => ['Not Implemented', 'The server either does not recognise the request method, or it lacks the ability to fulfill the request.'],
-	503 => ['Service Unavailable', 'The server is currently unavailable (because it is overloaded or down for maintenance).'],
+	# success codes
+	200 => 'OK',
+	201 => 'Created',
+	202 => 'Accepted',
+	204 => 'No Content',
+
+	# redirect codes
+	300 => 'Multiple Choices',
+	301 => 'Moved Permanently',
+	302 => 'Found',
+	303 => 'See Other',
+	304 => 'Not Modified',
+	307 => 'Temporary Redirect',
+
+	# client error codes
+	400 => 'Bad Request',
+	401 => 'Unauthorized',
+	403 => 'Forbidden',
+	404 => 'Not Found',
+	405 => 'Method Not Allowed',
+	406 => 'Not Acceptable',
+	408 => 'Request Timeout',
+	409 => 'Conflict',
+	410 => 'Gone',
+	411 => 'Length Required',
+	412 => 'Precondition Failed',
+	413 => 'Request Entity Too Large',
+	414 => 'Request-URI Too Long',
+	415 => 'Unsupported Media Type',
+	417 => 'Expectation Failed',
+
+	# server error codes
+	500 => 'Internal Server Error',
+	501 => 'Not Implemented',
+	502 => 'Bad Gateway',
+	503 => 'Service Unavailable',
+	504 => 'Gateway Timeout',
+	522 => 'Connection timed out',
 };
 
 =head1 AUTHOR
@@ -624,9 +608,9 @@ I wish to thank the following people:
 
 =over
 
-=item * L<http://search.cpan.org/~sknpp/|Sebastian Knapp> for submitting bug fixes
+=item * L<Sebastian Knapp|http://search.cpan.org/~sknpp/> for submitting bug fixes
 
-=item * L<http://search.cpan.org/~mdorman/|Michael Alan Dorman> for some helpful ideas
+=item * L<Michael Alan Dorman|http://search.cpan.org/~mdorman/> for some helpful ideas
 
 =back
 
@@ -676,4 +660,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;

@@ -2,8 +2,7 @@ package Leyland::View;
 
 # ABSTRACT: Leyland view base class
 
-use Moose::Role;
-use namespace::autoclean;
+use Moo::Role;
 
 =head1 NAME
 
@@ -16,13 +15,13 @@ Leyland::View - Leyland view base class
 
 	package Leyland::View::SomeEngine;
 
-	use Moose;
-	use namespace::autoclean;
+	use Moo;
+	use namespace::clean;
 	use SomeEngine;
 
 	with 'Leyland::View';
 
-	has 'engine' => (is => 'ro', isa => 'SomeEngine', default => sub { SomeEngine->new });
+	has 'engine' => (is => 'ro', default => sub { SomeEngine->new });
 
 	sub render {
 		my ($self, $view, $context, $use_layout) = @_;
@@ -32,19 +31,19 @@ Leyland::View - Leyland view base class
 		return $self->engine->render($view, $context, $use_layout);
 	}
 
-	__PACKAGE__->meta->make_immutable;
+	1;
 
 =head1 DESCRIPTION
 
-This L<Moose role|Moose::Role> describes how Leyland view classes, mostly
-used to render HTML responses (but can be used for pretty much anything),
+This L<Moo role|Moo::Role> describes how Leyland view classes - mostly
+used to render HTML responses (but can be used for pretty much anything) -
 are to be built. A view class uses a template engine (such as L<Template::Toolkit> or
 <Tenjin>) to render responses.
 
-Leyland's default view class is L<Leyland::View::Tenjin>, which, as you
-may have guesses, uses the L<Tenjin> template engine.
+Leyland's default view class is L<Leyland::View::Tenjin>, which uses the
+L<Tenjin> template engine.
 
-=head1 REQUIRED METHOSD
+=head1 REQUIRED METHODS
 
 Consuming classes are required to implement the following methods:
 
@@ -64,6 +63,21 @@ Returns the rendered output.
 =cut
 
 requires 'render';
+
+=head1 PROVIDED ATTRIBUTES
+
+=head2 view_dir
+
+The directory in which views/templates reside. By default, this will be
+'views' (relative to the current working directory).
+
+=cut
+
+has 'view_dir' => (
+	is => 'ro',
+	isa => sub { die "view_dir must be a string" unless !ref $_[0] },
+	default => sub { 'views' }
+);
 
 =head1 AUTHOR
 
@@ -105,7 +119,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

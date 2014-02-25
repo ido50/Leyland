@@ -159,14 +159,6 @@ sub method_name {
 	return uc($meth);
 }
 
-=head1 INTERNAL METHODS
-
-The following methods are only to be used internally.
-
-=head2 _negotiate_path( $c, \%args )
-
-=cut
-
 sub _negotiate_path {
 	my ($class, $c, $args) = @_;
 
@@ -182,10 +174,6 @@ sub _negotiate_path {
 		return $routes;
 	}
 }
-
-=head2 _prefs_and_routes( $path )
-
-=cut
 
 sub _prefs_and_routes {
 	my ($class, $path) = @_;
@@ -206,10 +194,6 @@ sub _prefs_and_routes {
 
 	return $pref_routes;
 }
-
-=head2 _matching_routes( $app_routes, $pref_routes, $internal )
-
-=cut
 
 sub _matching_routes {
 	my ($class, $app_routes, $pref_routes, $internal) = @_;
@@ -249,19 +233,11 @@ sub _matching_routes {
 	return $routes;
 }
 
-=head2 _negotiate_method( $method, $routes )
-
-=cut
-
 sub _negotiate_method {
 	my ($class, $method, $routes) = @_;
 
 	return [grep { $class->method_name($_->{method}) eq $method || $_->{method} eq 'any' } @$routes];
 }
-
-=head2 _negotiate_receive_media( $c, $all_routes )
-
-=cut
 
 sub _negotiate_receive_media {
 	my ($class, $c, $all_routes) = @_;
@@ -296,10 +272,6 @@ sub _negotiate_receive_media {
 
 	return $routes;
 }
-
-=head2 _negotiate_return_media( $c, $all_routes )
-
-=cut
 
 sub _negotiate_return_media {
 	my ($class, $c, $all_routes) = @_;
@@ -361,10 +333,6 @@ sub _negotiate_return_media {
 	return $routes;
 }
 
-=head2 _negotiate_charset( $c )
-
-=cut
-
 sub _negotiate_charset {
 	my ($class, $c) = @_;
 
@@ -420,7 +388,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

@@ -19,7 +19,7 @@ create that section if it doesn't already exist):
 	use Plack::Builder;
 
 	... rest of app.psgi ...
-	my $app = ...
+	my $app = MyLeylandApp->new->to_app;
 	... rest of app.psgi ...
 
 	builder {
@@ -34,7 +34,10 @@ any requests to paths that start with "images", "js" or "css" (plus the
 files "favicon.ico" and "apple-touch-icon.png") from the "public/" directory
 of your application.
 
-When deploying your application, however, it is likely that you will run
+There are other Plack middlewares for serving static files. Some are more suitable
+for production/deployment environments, such as L<Plack::App::MCCS>.
+
+When deploying your application, it is likely that you will run
 the application behind a frontend webserver like Apache, nginx, lighttpd
 or Cherokee. If so, you might find it better to let them serve the static
 files of your application. I will not go into detail how to perform this,
@@ -98,7 +101,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

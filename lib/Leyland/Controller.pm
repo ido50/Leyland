@@ -2,9 +2,9 @@ package Leyland::Controller;
 
 # ABSTRACT: Leyland controller base class
 
-use Moose::Role;
-use MooseX::ClassAttribute 0.24;
-use namespace::autoclean;
+use Moo::Role;
+
+our %INFO;
 
 =head1 NAME
 
@@ -16,7 +16,7 @@ Leyland::Controller - Leyland controller base class
 
 =head1 DESCRIPTION
 
-This L<Moose role|Moose::Role> describes how L<Leyland> controllers are
+This L<Moo role|Moo::Role> describes how L<Leyland> controllers are
 to be created. For information about creating controllers, please see
 L<Leyland::Manual::Controllers>.
 
@@ -33,8 +33,23 @@ A L<Tie::IxHash> object with all the controller's routes.
 
 =cut
 
-class_has 'prefix' => (is => 'rw', isa => 'Str', default => '');
-class_has 'routes' => (is => 'ro', isa => 'Tie::IxHash', predicate => 'has_routes', writer => '_set_routes');
+sub prefix {
+	my $class = shift;
+
+	$class = ref $class
+		if ref $class;
+
+	return $INFO{$class} ? $INFO{$class}->{prefix} : '';
+}
+
+sub routes {
+	my $class = shift;
+
+	$class = ref $class
+		if ref $class;
+
+	return $INFO{$class} ? $INFO{$class}->{routes} : Tie::IxHash->new;
+}
 
 =head1 CLASS METHODS
 
@@ -57,11 +72,11 @@ sub add_route {
 		}
 	}
 
-	$rules->{accepts} ||= ['text/html'];
-	$rules->{returns} ||= ['text/html'];
+	$rules->{accepts} ||= [];
+	$rules->{returns} ||= [$Leyland::INFO{default_mime}];
 	$rules->{is} ||= ['external'];
-	
-	# if this is a POST route, make sure it accepts application/x-www-form-urlencoded
+
+	# if this is a POST/PUT route, make sure it accepts application/x-www-form-urlencoded
 	my $xwfu;
 	foreach (@{$rules->{accepts}}) {
 		if ($_ eq 'application/x-www-form-urlencoded') {
@@ -80,16 +95,15 @@ sub add_route {
 		}
 	}
 
-	my $routes = $class->has_routes ? $class->routes : Tie::IxHash->new;
-	
+	$INFO{$class} ||= { prefix => '', routes => Tie::IxHash->new };
+	my $routes = $INFO{$class}->{routes};
+
 	if ($routes->EXISTS($regex)) {
 		my $thing = $routes->FETCH($regex);
 		$thing->{$method} = { class => $class, code => $code, rules => $rules };
 	} else {
 		$routes->Push($regex => { $method => { class => $class, code => $code, rules => $rules } });
 	}
-	
-	$class->_set_routes($routes);
 }
 
 =head2 set_prefix()
@@ -101,7 +115,8 @@ Sets the prefix for all routes in the controller.
 sub set_prefix {
 	my ($class, $code) = @_;
 
-	$class->prefix($code->());
+	$INFO{$class} ||= { prefix => '', routes => Tie::IxHash->new };
+	$INFO{$class}->{prefix} = $code->();
 }
 
 =head1 METHODS MEANT TO BE OVERRIDDEN
@@ -185,7 +200,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

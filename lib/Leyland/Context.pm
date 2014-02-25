@@ -2,9 +2,8 @@ package Leyland::Context;
 
 # ABSTRACT: The working environment of an HTTP request and Leyland response
 
-use Moose;
-use MooseX::NonMoose;
-use namespace::autoclean;
+use Moo;
+use namespace::clean;
 
 use Carp;
 use Data::Dumper;
@@ -88,11 +87,6 @@ Holds the L<Plack> environment in which the application is running. This
 is the C<PLACK_ENV> environment variable. See the C<-E> or C<--env> switch
 in L<plackup> for more information. Defaults to 'development'.
 
-=head2 num
-
-The sequential number of the request (since the application has been
-initialized).
-
 =head2 res
 
 The L<Plack::Response> object used to respond to the client.
@@ -170,43 +164,113 @@ parsing. Not to be used directly.
 
 =cut
 
-has 'app' => (is => 'ro', isa => 'Leyland', required => 1);
+has 'app' => (
+	is => 'ro',
+	isa => sub { die "app must be a Leyland object" unless ref $_[0] && $_[0]->isa('Leyland') },
+	required => 1,
+	handles => ['cwe', 'views', 'config']
+);
 
-has 'cwe' => (is => 'ro', isa => 'Str', default => $ENV{PLACK_ENV});
+has 'res' => (
+	is => 'lazy',
+	isa => sub { die "res must be a Plack::Response object" unless ref $_[0] && $_[0]->isa('Plack::Response') }
+);
 
-has 'num' => (is => 'ro', isa => 'Int', default => 0);
+has 'routes' => (
+	is => 'ro',
+	isa => sub { die "routes must be an array-ref" unless ref $_[0] && ref $_[0] eq 'ARRAY' },
+	predicate => 'has_routes',
+	writer => '_set_routes'
+);
 
-has 'res' => (is => 'ro', isa => 'Plack::Response', lazy_build => 1);
+has 'current_route' => (
+	is => 'ro',
+	isa => sub { die "current_route must be an integer" unless $_[0] =~ m/^\d+$/ },
+	default => 0,
+	writer => '_set_current_route'
+);
 
-has 'routes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_routes', writer => '_set_routes');
+has 'froutes' => (
+	is => 'ro',
+	isa => sub { die "froutes must be an array-ref" unless ref $_[0] && ref $_[0] eq 'ARRAY' },
+	predicate => 'has_froutes',
+	writer => '_set_froutes',
+	clearer => '_clear_froutes'
+);
 
-has 'current_route' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_current_route');
+has 'current_froute' => (
+	is => 'ro',
+	isa => sub { die "current_froute must be an integer" unless $_[0] =~ m/^\d+$/ },
+	default => 0,
+	writer => '_set_current_froute'
+);
 
-has 'froutes' => (is => 'ro', isa => 'ArrayRef[HashRef]', predicate => 'has_froutes', writer => '_set_froutes', clearer => '_clear_froutes');
+has 'controller' => (
+	is => 'ro',
+	isa => sub { die "controller must be a scalar" if ref $_[0] },
+	writer => '_set_controller'
+);
 
-has 'current_froute' => (is => 'ro', isa => 'Int', default => 0, writer => '_set_current_froute');
+has 'wanted_mimes' => (
+	is => 'ro',
+	isa => sub { die "wanted_mimes must be an array-ref" unless ref $_[0] && ref $_[0] eq 'ARRAY' },
+	builder => '_build_mimes'
+);
 
-has 'controller' => (is => 'ro', isa => 'Str', writer => '_set_controller');
+has 'want' => (
+	is => 'ro',
+	isa => sub { die "want must be a scalar" if ref $_[0] },
+	writer => '_set_want'
+);
 
-has 'wanted_mimes' => (is => 'ro', isa => 'ArrayRef[HashRef]', builder => '_build_mimes');
+has 'lang' => (
+	is => 'ro',
+	isa => sub { die "lang must be a scalar" if ref $_[0] },
+	writer => 'set_lang',
+	default => 'en'
+);
 
-has 'want' => (is => 'ro', isa => 'Str', writer => '_set_want');
+has 'stash' => (
+	is => 'ro',
+	isa => sub { die "stash must be an hash-ref" unless ref $_[0] && ref $_[0] eq 'HASH' },
+	default => sub { {} }
+);
 
-has 'lang' => (is => 'ro', isa => 'Str', writer => 'set_lang', default => 'en');
+has 'user' => (
+	is => 'ro',
+	predicate => 'has_user',
+	writer => 'set_user',
+	clearer => 'clear_user'
+);
 
-has 'stash' => (is => 'ro', isa => 'HashRef', default => sub { {} });
+has 'log' => (
+	is => 'lazy',
+	isa => sub { die "log must be a Leyland::Logger object" unless ref $_[0] && ref $_[0] eq 'Leyland::Logger' }
+);
 
-has 'user' => (is => 'ro', isa => 'Any', predicate => 'has_user', writer => 'set_user', clearer => 'clear_user');
+has 'json' => (
+	is => 'ro',
+	isa => sub { die "json must be a JSON object" unless ref $_[0] && ref $_[0] eq 'JSON' },
+	default => sub { JSON->new->utf8(0)->convert_blessed }
+);
 
-has 'log' => (is => 'ro', isa => 'Leyland::Logger', lazy_build => 1);
+has 'xml' => (
+	is => 'ro',
+	isa => sub { die "xml must be an XML::TreePP object" unless ref $_[0] && ref $_[0] eq 'XML::TreePP' },
+	default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; }
+);
 
-has 'json' => (is => 'ro', isa => 'JSON', default => sub { JSON->new->utf8(0)->convert_blessed });
+has '_pass_next' => (
+	is => 'ro',
+	default => 0,
+	writer => '_set_pass_next'
+);
 
-has 'xml' => (is => 'ro', isa => 'XML::TreePP', default => sub { my $xml = XML::TreePP->new(); $xml->set(utf8_flag => 1); return $xml; });
-
-has '_pass_next' => (is => 'ro', isa => 'Bool', default => 0, writer => '_set_pass_next');
-
-has '_data' => (is => 'ro', isa => 'Any', predicate => '_has_data', writer => '_set_data');
+has '_data' => (
+	is => 'ro',
+	predicate => '_has_data',
+	writer => '_set_data'
+);
 
 =head1 OBJECT METHODS
 
@@ -222,22 +286,6 @@ An alias for the "app" attribute.
 =cut
 
 sub leyland { shift->app }
-
-=head2 config()
-
-A shortcut for C<< $c->app->config >>.
-
-=cut
-
-sub config { shift->app->config }
-
-=head2 views()
-
-A shortcut for C<< $c->app->views >>.
-
-=cut
-
-sub views { shift->app->views }
 
 =head2 has_routes()
 
@@ -621,29 +669,18 @@ sub _respond {
 sub _log_request {
 	my $self = shift;
 
-	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
-
-	print STDOUT $t->hr('top'), "\n",
-		     $t->row('Request #', 'Address', 'Method', 'Path', 'Content-Type'), "\n",
-		     $t->dhr, "\n";
-	foreach (split(/\n/, $t->row($self->num, $self->address, $self->method, $self->path, $self->content_type))) {
-		print STDOUT $_, "\n";
-	}
-	print STDOUT $t->hr, "\n";
+	print STDOUT "\n", '='x80, "\n",
+			 '| New request: ', $self->method, ' ', $self->path, ' from ', $self->address, "\n",
+			 '-'x80, "\n";
 }
 
 sub _log_response {
 	my $self = shift;
 
-	my $t = Text::SpanningTable->new(20, 20, 12, 20, 28);
-
-	print STDOUT $t->hr, "\n";
-	foreach (split(/\n/, $t->row($self->num, $self->res->status.' '.$Leyland::CODES->{$self->res->status}->[0], [3, $self->res->content_type]))) {
-		print STDOUT $_, "\n";
-	}
-	print STDOUT $t->dhr, "\n",
-		     $t->row('Response #', 'Status', [3, 'Content-Type']), "\n",
-		     $t->hr('bottom'), "\n\n";
+	print STDOUT '-'x80, "\n",
+			 '| Response code: ', $self->res->status, ' ', $Leyland::CODES->{$self->res->status}, "\n",
+			 '| Response type: ', $self->res->content_type, "\n",
+			 '='x80, "\n";
 }
 
 sub _invoke_route {
@@ -782,7 +819,11 @@ decode the content, this class does since Leyland is purely UTF-8).
 
 =cut
 
-override 'content' => sub { $_[0]->env->{'leyland.request.content'} ||= Encode::decode('UTF-8', super()) };
+around content => sub {
+	my ($orig, $self) = @_;
+
+	return $self->env->{'leyland.request.content'} ||= Encode::decode('UTF-8', $self->$orig);
+};
 
 =head2 session()
 
@@ -794,7 +835,11 @@ to it will only be alive for the lifetime of the request.
 
 =cut
 
-override 'session' => sub { super() || {} };
+around session => sub {
+	my ($orig, $self) = @_;
+
+	return $self->$orig || {};
+};
 
 =head2 query_parameters()
 
@@ -804,13 +849,13 @@ decode the query, this class does since Leyland is purely UTF-8).
 
 =cut
 
-override 'query_parameters' => sub {
-	my $self = shift;
+around query_parameters => sub {
+	my ($orig, $self) = @_;
 
 	if ($self->env->{'leyland.request.query'}) {
 		return $self->env->{'leyland.request.query'};
 	} else {
-		my $params = super()->as_hashref_mixed;
+		my $params = $self->$orig->as_hashref_mixed;
 		foreach (keys %$params) {
 			if (ref $params->{$_}) { # implied: ref $params->{$_} eq 'ARRAY'
 				my $arr = [];
@@ -834,8 +879,8 @@ decode the body, this class does since Leyland is purely UTF-8).
 
 =cut
 
-override 'body_parameters' => sub {
-	my $self = shift;
+around body_parameters => sub {
+	my ($orig, $self) = @_;
 
 	$self->_parse_request_body
 		unless $self->env->{'leyland.request.body'};
@@ -843,7 +888,7 @@ override 'body_parameters' => sub {
 	return $self->env->{'leyland.request.body'};
 };
 
-after '_parse_request_body' => sub {
+after _parse_request_body => sub {
 	my $self = shift;
 
 	# decode the body parameters
@@ -864,8 +909,10 @@ after '_parse_request_body' => sub {
 	}
 };
 
-override '_uri_base' => sub {
-	my $base = super();
+around _uri_base => sub {
+	my ($orig, $self) = @_;
+
+	my $base = $self->$orig;
 	$base .= '/' unless $base =~ m!/$!;
 	return $base;
 };
@@ -920,4 +967,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;

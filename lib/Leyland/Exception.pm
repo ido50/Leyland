@@ -2,8 +2,8 @@ package Leyland::Exception;
 
 # ABSTRACT: Throwable class for Leyland application exceptions
 
-use Moose;
-use namespace::autoclean;
+use Moo;
+use namespace::clean;
 
 =head1 NAME
 
@@ -30,7 +30,10 @@ Leyland::Exception - Throwable class for Leyland application exceptions
 
 	# or you can create an error that redirects (don't do this unless
 	# you have a good reason to, you'd most likely want to use
-	# $c->res->redirect to redirect requests).
+	# $c->res->redirect to redirect requests). The only place where
+	# this should be acceptable is inside controller methods such
+	# as auto() and pre_route(), where redirecting responses is not
+	# yet possible.
 	$c->exception({
 		code => 303,
 		error => "The resource you're requesting is available at a different location",
@@ -39,7 +42,7 @@ Leyland::Exception - Throwable class for Leyland application exceptions
 
 =head1 DESCRIPTION
 
-This module provides Leyland applications the ability to throw HTTP exceptions
+This module provides L<Leyland applications the ability to throw HTTP exceptions
 in a consistent and standard way. Leyland applications are meant to throw
 standard HTTP errors, like "404 Not Found", "400 Bad Request", "500 Internal
 Server Error", etc. Check out L<List of HTTP status codes at Wikipedia|https://secure.wikimedia.org/wikipedia/en/w/index.php?title=List_of_HTTP_status_codes&oldid=424349307>
@@ -102,15 +105,35 @@ view (if exception has the "mimes" attribute). Defaults to true.
 
 with 'Throwable';
 
-has 'code' => (is => 'ro', isa => 'Int', required => 1);
+has 'code' => (
+	is => 'ro',
+	isa => sub { die "code must be an integer" unless $_[0] =~ m/^\d+$/ },
+	required => 1
+);
 
-has 'error' => (is => 'ro', isa => 'Str', predicate => 'has_error', writer => '_set_error');
+has 'error' => (
+	is => 'ro',
+	isa => sub { die "error must be a scalar" if ref $_[0] },
+	predicate => 'has_error',
+	writer => '_set_error'
+);
 
-has 'location' => (is => 'ro', isa => 'Str', predicate => 'has_location');
+has 'location' => (
+	is => 'ro',
+	isa => sub { die "location must be a scalar" if ref $_[0] },
+	predicate => 'has_location'
+);
 
-has 'mimes' => (is => 'ro', isa => 'HashRef', predicate => 'has_mimes');
+has 'mimes' => (
+	is => 'ro',
+	isa => sub { die "mimes must be a hash-ref" unless ref $_[0] && ref $_[0] eq 'HASH' },
+	predicate => 'has_mimes'
+);
 
-has 'use_layout' => (is => 'ro', isa => 'Bool', default => 1);
+has 'use_layout' => (
+	is => 'ro',
+	default => 1
+);
 
 =head1 OBJECT METHODS
 
@@ -164,27 +187,15 @@ is 404, the name will be "Not Found".
 =cut
 
 sub name {
-	$Leyland::CODES->{$_[0]->code}->[0] || 'Internal Server Error';
+	$Leyland::CODES->{$_[0]->code} || 'Internal Server Error';
 }
-
-=head2 description()
-
-Returns a generic description of the exception's status code. Descriptions
-are taken from the Wikipedia article mentioned in L</"DESCRIPTION">.
-
-=cut
-
-sub description {
-	$Leyland::CODES->{$_[0]->code}->[1] || 'Generic HTTP exception';
-}
-
-=head1 INTERNAL METHODS
-
-The following methods are only to be used internally.
 
 =head2 hash()
 
-Returns a hash-ref representation of the error.
+Returns a hash-ref representation of the error. This hash-ref will have
+the keys C<error> (which will hold the exception code and the exception
+name, separated by a space, e.g. C<404 Not Found>), and C<message>, which
+will hold the error message.
 
 =cut
 
@@ -192,11 +203,14 @@ sub hash {
 	my $self = shift;
 
 	return {
-		error => $self->code . ' ' . $self->name,
-		message => $self->error,
-		description => $self->description,
+		error => $self->code.' '.$self->name,
+		message => $self->error
 	};
 }
+
+=head1 INTERNAL METHODS
+
+The following methods are only to be used internally.
 
 =head2 BUILD()
 
@@ -205,7 +219,8 @@ sub hash {
 sub BUILD {
 	my $self = shift;
 
-	$self->_set_error($self->code . ' ' . $self->name) unless $self->has_error;
+	$self->_set_error($self->code.' '.$self->name)
+		unless $self->has_error;
 }
 
 =head1 AUTHOR
@@ -248,7 +263,7 @@ L<http://search.cpan.org/dist/Leyland/>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2011 Ido Perlmuter.
+Copyright 2010-2014 Ido Perlmuter.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
@@ -258,4 +273,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;
