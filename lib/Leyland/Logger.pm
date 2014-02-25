@@ -75,6 +75,8 @@ This class provides methods for the following log levels:
 
 =item * B<critical> (with a B<crit> and C<fatal> aliases)
 
+=item * B<alert>
+
 =item * B<emergency>
 
 =back

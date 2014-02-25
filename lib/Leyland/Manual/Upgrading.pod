@@ -13,7 +13,7 @@ of, even if they don't break backwords compatibility.
 
 =head2 BACKWORDS COMPATIBILITY BREAKING CHANGES
 
-=over *
+=over
 
 =item * Leyland now properly inherits L<Plack::Component>, so it automatically gets the C<to_app()> method from it. You no longer need define an application subroutine that calls the C<handle()> method. On that note, the C<handle()> method is renamed to C<call()> in accordance with C<Plack::Component>. This should be a simple change in your PSGI files: either change C<handle> to C<call>, or just call the C<to_app()> method on the application object to create the application subroutine automatically.
 

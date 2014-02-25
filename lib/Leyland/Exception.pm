@@ -42,7 +42,7 @@ Leyland::Exception - Throwable class for Leyland application exceptions
 
 =head1 DESCRIPTION
 
-This module provides L<Leyland applications the ability to throw HTTP exceptions
+This module provides L<Leyland> applications the ability to throw HTTP exceptions
 in a consistent and standard way. Leyland applications are meant to throw
 standard HTTP errors, like "404 Not Found", "400 Bad Request", "500 Internal
 Server Error", etc. Check out L<List of HTTP status codes at Wikipedia|https://secure.wikimedia.org/wikipedia/en/w/index.php?title=List_of_HTTP_status_codes&oldid=424349307>

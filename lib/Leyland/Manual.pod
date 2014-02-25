@@ -25,7 +25,7 @@ serializes resources to representations in the format your client
 wants to receive, like JSON and XML. It will also automatically deserialize
 JSON/XML requests coming from the client to Perl data-structures.
 
-=item * P<Pure UTF-8> - Leyland applications are pure UTF-8. Anything your
+=item * B<Pure UTF-8> - Leyland applications are pure UTF-8. Anything your
 application receives is automatically UTF-8 decoded, and anything your
 application sends is automatically UTF-8 encoded. Leyland apps will not
 accept, nor provide, content in a different character set. If you want to
