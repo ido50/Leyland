@@ -262,7 +262,7 @@ has 'xml' => (
 
 has '_pass_next' => (
 	is => 'ro',
-	default => 0,
+	default => sub { 0 },
 	writer => '_set_pass_next'
 );
 
