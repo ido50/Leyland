@@ -186,7 +186,7 @@ has 'routes' => (
 has 'current_route' => (
 	is => 'ro',
 	isa => sub { die "current_route must be an integer" unless $_[0] =~ m/^\d+$/ },
-	default => 0,
+	default => sub { 0 },
 	writer => '_set_current_route'
 );
 
@@ -201,7 +201,7 @@ has 'froutes' => (
 has 'current_froute' => (
 	is => 'ro',
 	isa => sub { die "current_froute must be an integer" unless $_[0] =~ m/^\d+$/ },
-	default => 0,
+	default => sub { 0 },
 	writer => '_set_current_froute'
 );
 
@@ -227,7 +227,7 @@ has 'lang' => (
 	is => 'ro',
 	isa => sub { die "lang must be a scalar" if ref $_[0] },
 	writer => 'set_lang',
-	default => 'en'
+	default => sub { 'en' }
 );
 
 has 'stash' => (
