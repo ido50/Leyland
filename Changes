@@ -1,7 +1,7 @@
 Revision history for Leyland
 
 {{$NEXT}}
-	* Bugfix: the default for the context_class attribute should be a coderef, not scalar
+	* Bugfix: certain attributes had the default option as scalar instead of coderef (Moo)
 
 1.000001  2014-02-25 18:28:01 Asia/Jerusalem
 	* Small pod fix

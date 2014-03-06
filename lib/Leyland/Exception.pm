@@ -136,7 +136,7 @@ has 'mimes' => (
 
 has 'use_layout' => (
 	is => 'ro',
-	default => 1
+	default => sub { 1 }
 );
 
 =head1 OBJECT METHODS
